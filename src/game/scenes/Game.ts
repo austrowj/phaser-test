@@ -41,9 +41,11 @@ export class Game extends Scene
 
         this.add.existing(new Dungeon(this, 512, 200));
 
-        this.player = new WyvernController(new Wyvern(this, 512, 384, 'air'), this);
-        this.add.existing(this.player);
+        const player = new Wyvern(this, 512, 384, 'air', 'medium');
+        this.add.existing(new WyvernController(player, this));
         this.add.existing(new Wyvern(this, 300, 200, 'fire', 'small'));
         this.add.existing(new Wyvern(this, 700, 500, 'water', 'large'));
+
+        this.camera.startFollow(player);
     }
 }

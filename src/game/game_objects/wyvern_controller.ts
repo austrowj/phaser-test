@@ -36,7 +36,7 @@ export class WyvernController extends Phaser.GameObjects.GameObject {
         wyvern.postFX.addGlow(parseInt('#ff9900'.substring(1), 16), 1.5, 0.5);
     }
 
-    preUpdate(time: number, delta: number): void {
+    public preUpdate(time: number, delta: number): void {
         let key_state = 0;
         this.heading_key_state.forEach((bit, key) => {
             if (key.isDown) {
@@ -44,12 +44,14 @@ export class WyvernController extends Phaser.GameObjects.GameObject {
             }
         });
         const heading = this.key_state_to_direction.get(key_state);
-        if (heading !== undefined) {
+        if (heading !== undefined && key_state > 0) {
             this.wyvern.setHeading(heading);
             this.wyvern.setAction(Action.Fly);
         } else {
             this.wyvern.setAction(Action.Hover);
         }
+
+        time + delta;
     }
 
 }
