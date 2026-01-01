@@ -1,3 +1,9 @@
+# My Notes
+
+## Asset sources
+- character/wyvern_composite.png: [https://opengameart.org/content/wyvern-1](https://opengameart.org/content/wyvern-1)
+- ui: [https://kenney.nl/assets/ui-pack-sci-fi](https://kenney.nl/assets/ui-pack-sci-fi)
+
 # Phaser Bun TypeScript Template
 
 This is a Phaser 3 project template that uses Vite and Bun for bundling. It supports hot-reloading for quick development workflow, includes TypeScript support and scripts to generate production-ready builds.

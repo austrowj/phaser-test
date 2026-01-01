@@ -33,6 +33,19 @@ export class Preloader extends Scene
         this.load.setPath('assets');
 
         this.load.image('logo', 'logo.png');
+        
+        this.load.spritesheet(
+            'wyvern',
+            'character/wyvern_composite.png',
+            { frameWidth: 256, frameHeight: 256 }
+        )
+        for (let variant of ['air', 'fire', 'water']) {
+            this.load.spritesheet(
+                'wyvern_' + variant,
+                'character/wyvern_' + variant + '.png',
+                { frameWidth: 256, frameHeight: 256 }
+            );
+        }
     }
 
     create ()

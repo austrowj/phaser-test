@@ -1,10 +1,14 @@
 import { Scene } from 'phaser';
+import { Wyvern } from '../game_objects/wyvern';
+import { WyvernController } from '../game_objects/wyvern_controller';
 
 export class Game extends Scene
 {
     camera: Phaser.Cameras.Scene2D.Camera;
-    background: Phaser.GameObjects.Image;
-    msg_text : Phaser.GameObjects.Text;
+    //background: Phaser.GameObjects.Image;
+    //msg_text : Phaser.GameObjects.Text;
+
+    player: Phaser.GameObjects.GameObject;
 
     constructor ()
     {
@@ -14,8 +18,9 @@ export class Game extends Scene
     create ()
     {
         this.camera = this.cameras.main;
-        this.camera.setBackgroundColor(0x00ff00);
+        this.camera.setBackgroundColor('#a1a1a1ff');
 
+        /*
         this.background = this.add.image(512, 384, 'background');
         this.background.setAlpha(0.5);
 
@@ -31,5 +36,9 @@ export class Game extends Scene
             this.scene.start('GameOver');
 
         });
+        */
+
+        this.player = new WyvernController(new Wyvern(this, 512, 384), this);
+        this.add.existing(this.player);
     }
 }
