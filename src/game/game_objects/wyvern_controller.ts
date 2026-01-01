@@ -33,6 +33,7 @@ export class WyvernController extends Phaser.GameObjects.GameObject {
         ]);
 
         this.setInteractive();
+        wyvern.postFX.addGlow(parseInt('#ff9900'.substring(1), 16), 1.5, 0.5);
     }
 
     preUpdate(time: number, delta: number): void {

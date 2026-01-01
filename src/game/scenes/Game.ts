@@ -1,6 +1,7 @@
 import { Scene } from 'phaser';
 import { Wyvern } from '../game_objects/wyvern';
 import { WyvernController } from '../game_objects/wyvern_controller';
+import { Dungeon } from '../game_objects/dungeon';
 
 export class Game extends Scene
 {
@@ -18,7 +19,7 @@ export class Game extends Scene
     create ()
     {
         this.camera = this.cameras.main;
-        this.camera.setBackgroundColor('#a1a1a1ff');
+        this.camera.setBackgroundColor('#a1a1a1');
 
         /*
         this.background = this.add.image(512, 384, 'background');
@@ -38,7 +39,11 @@ export class Game extends Scene
         });
         */
 
-        this.player = new WyvernController(new Wyvern(this, 512, 384), this);
+        this.add.existing(new Dungeon(this, 512, 200));
+
+        this.player = new WyvernController(new Wyvern(this, 512, 384, 'air'), this);
         this.add.existing(this.player);
+        this.add.existing(new Wyvern(this, 300, 200, 'fire', 'small'));
+        this.add.existing(new Wyvern(this, 700, 500, 'water', 'large'));
     }
 }

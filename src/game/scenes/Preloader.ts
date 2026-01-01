@@ -1,4 +1,5 @@
 import { Scene } from 'phaser';
+import { TILE_WIDTH, TILE_HEIGHT } from '../game_objects/dungeon';
 
 export class Preloader extends Scene
 {
@@ -46,6 +47,12 @@ export class Preloader extends Scene
                 { frameWidth: 256, frameHeight: 256 }
             );
         }
+
+        this.load.spritesheet(
+            'floor_tiles',
+            'denzi_iso/img/96x96-32x32_dungeon_Denzi071009-1.PNG',
+            { frameWidth: TILE_WIDTH, frameHeight: TILE_HEIGHT }
+        )
     }
 
     create ()

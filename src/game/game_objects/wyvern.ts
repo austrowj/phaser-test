@@ -1,17 +1,29 @@
-
 export enum Heading { W=0, NW, N, NE, E, SE, S, SW }
 export enum Action { Hover=0, Fly, Sting, Breathe, Ram, Hit, Die }
+
+const size_config = {
+    'small':  { scale: 0.25, rate: 24 },
+    'medium': { scale: 0.50, rate: 12 },
+    'large':  { scale: 1.00, rate:  8 }
+}
 
 export class Wyvern extends Phaser.Physics.Arcade.Sprite {
 
     private currentHeading: Heading = Heading.N;
     private currentAction: Action = Action.Fly;
 
-    constructor(scene: Phaser.Scene, x: number, y: number, variant?: 'air' | 'fire' | 'water') {
+    constructor(
+        scene: Phaser.Scene, x: number, y: number,
+        variant?: 'air' | 'fire' | 'water',
+        size: keyof typeof size_config = 'medium'
+    ) {
         const textureKey = variant ? 'wyvern_' + variant : 'wyvern';
         super(scene, x, y, textureKey);
         scene.add.existing(this);
         scene.physics.add.existing(this);
+
+        this.setCircle(20, 108, 100);
+        this.setScale(size_config[size].scale);
 
         for (let action in Action) {
             for (let dir in Heading) {
@@ -21,7 +33,7 @@ export class Wyvern extends Phaser.Physics.Arcade.Sprite {
                         start: Number(dir)*8*7 + Number(action)*8,
                         end:   Number(dir)*8*7 + Number(action)*8 + 7 
                     }),
-                    frameRate: (action === 'Hover') ? 6 : 12,
+                    frameRate: size_config[size].rate,
                     repeat: -1
                 });
             }
