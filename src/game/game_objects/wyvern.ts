@@ -1,5 +1,5 @@
-export enum Heading { W=0, NW, N, NE, E, SE, S, SW }
-export enum Action { Hover=0, Fly, Sting, Breathe, Ram, Hit, Die }
+export enum Heading { W=0, NW, N, NE, E, SE, S, SW };
+export enum Action { Hover=0, Fly, Sting, Breathe, Ram, Hit, Die };
 
 const baseProperties = {
     topSpeed: 10,
@@ -12,20 +12,22 @@ const sizeConfig = {
 }
 
 const HEADING_VECTORS = new Map<Heading, Phaser.Math.Vector2>([
-    [Heading.N,  new Phaser.Math.Vector2(0, -1)],
-    [Heading.NE, new Phaser.Math.Vector2(1, -1).normalize()],
-    [Heading.E,  new Phaser.Math.Vector2(1, 0)],
-    [Heading.SE, new Phaser.Math.Vector2(1, 1).normalize()],
-    [Heading.S,  new Phaser.Math.Vector2(0, 1)],
-    [Heading.SW, new Phaser.Math.Vector2(-1, 1).normalize()],
-    [Heading.W,  new Phaser.Math.Vector2(-1, 0)],
-    [Heading.NW, new Phaser.Math.Vector2(-1, -1).normalize()]
+    [Heading.N,  new Phaser.Math.Vector2(0, -1).normalize()],
+    [Heading.NE, new Phaser.Math.Vector2(2, -1).normalize()],
+    [Heading.E,  new Phaser.Math.Vector2(1,  0).normalize()],
+    [Heading.SE, new Phaser.Math.Vector2(2,  1).normalize()],
+    [Heading.S,  new Phaser.Math.Vector2(0,  1).normalize()],
+    [Heading.SW, new Phaser.Math.Vector2(-2, 1).normalize()],
+    [Heading.W,  new Phaser.Math.Vector2(-1, 0).normalize()],
+    [Heading.NW, new Phaser.Math.Vector2(-2, -1).normalize()]
 ]);
 
 export class Wyvern extends Phaser.Physics.Arcade.Sprite {
 
-    private currentHeading: Heading = Heading.S;
-    private currentAction: Action = Action.Hover;
+    public currentHeading: Heading = Heading.S;
+    public currentAction: Action = Action.Hover;
+    public speed: number = 0;
+
     private topSpeed: number;
 
     constructor(
@@ -61,22 +63,12 @@ export class Wyvern extends Phaser.Physics.Arcade.Sprite {
 
     public preUpdate(time: number, delta: number): void {
         super.preUpdate(time, delta);
-
-        switch (this.currentAction) {
-            case Action.Fly: {
-                const headingVector = HEADING_VECTORS.get(this.currentHeading);
-                if (headingVector) {
-                    this.setVelocity(
-                        headingVector.x * this.topSpeed,
-                        headingVector.y * this.topSpeed
-                    );
-                }
-                break;
-            }
-            default: {
-                this.setVelocity(0, 0);
-                break;
-            }
+        const headingVector = HEADING_VECTORS.get(this.currentHeading);
+        if (headingVector) {
+            this.setVelocity(
+                headingVector.x * this.speed,
+                headingVector.y * this.speed
+            );
         }
     }
 
@@ -88,5 +80,32 @@ export class Wyvern extends Phaser.Physics.Arcade.Sprite {
     public setAction(action: Action) {
         this.currentAction = action;
         this.play(this.currentAction + '_' + this.currentHeading, true);
+    }
+
+    public setSpeedFraction(fraction: number) {
+        this.speed = Phaser.Math.Clamp(fraction, 0, 10) * this.topSpeed;
+    }
+
+    public getBreathHardpoint(): Phaser.Math.Vector2 {
+        //  Hardpoint is roughly in front of the wyvern's mouth.
+        const headingVector = HEADING_VECTORS.get(this.currentHeading);
+        if (headingVector) {
+            return new Phaser.Math.Vector2(
+                this.x + headingVector.x * 30,
+                this.y + headingVector.y * 30
+            );
+        } else {
+            return new Phaser.Math.Vector2(this.x, this.y);
+        }
+    }
+
+    public getHeadingConeAngleDegrees(): {min: number, max: number} {
+        const headingVector = HEADING_VECTORS.get(this.currentHeading);
+        if (headingVector) {
+            const base = Phaser.Math.RadToDeg(Math.atan2(headingVector.y, headingVector.x));
+            return {min: base - 20, max: base + 20};
+        } else {
+            return {min: 0, max: 0};
+        }
     }
 }

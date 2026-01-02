@@ -30,7 +30,7 @@ export class Preloader extends Scene
 
     preload ()
     {
-        //  Load the assets for the game - Replace with your own assets
+        this.load.setBaseURL('./');
         this.load.setPath('assets');
 
         this.load.image('logo', 'logo.png');
@@ -52,7 +52,9 @@ export class Preloader extends Scene
             'floor_tiles',
             'denzi_iso/img/96x96-32x32_dungeon_Denzi071009-1.PNG',
             { frameWidth: TILE_WIDTH, frameHeight: TILE_HEIGHT }
-        )
+        );
+
+        this.load.atlas('flares', 'effects/flares.png', 'effects/flares.json');
     }
 
     create ()
