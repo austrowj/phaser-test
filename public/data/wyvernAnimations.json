@@ -1,0 +1,32 @@
+{
+    "Idle": {
+        "base": "Hover",
+        "animConfig": {
+            "frameRate": 12,
+            "repeat": -1
+        },
+        "framesTemplate": [
+            { "frame": 0 }, { "frame": 1 }, { "frame": 2 }, { "frame": 3 },
+            { "frame": 4 }, { "frame": 5 }, { "frame": 6 }, { "frame": 7 }
+        ]
+    },
+    "Move": {
+        "base": "Fly",
+        "animConfig": {
+            "frameRate": 12,
+            "repeat": -1
+        },
+        "framesTemplate": [
+            { "frame": 0 }, { "frame": 1 }, { "frame": 2 }, { "frame": 3 },
+            { "frame": 4 }, { "frame": 5 }, { "frame": 6 }, { "frame": 7 }
+        ]
+    },
+    "BreathAttack":{
+        "base": "Breathe",
+        "animConfig" : {
+            "frameRate": 6,
+            "repeat": -1
+        },
+        "framesTemplate": [ {"frame": 4}, {"frame": 5}, {"frame": 6} ]
+    }
+}

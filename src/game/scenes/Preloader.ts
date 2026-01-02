@@ -1,5 +1,6 @@
 import { Scene } from 'phaser';
 import { TILE_WIDTH, TILE_HEIGHT } from '../game_objects/dungeon';
+import { load as loadWyverns } from '../game_objects/wyvernDriver';
 
 export class Preloader extends Scene
 {
@@ -35,18 +36,7 @@ export class Preloader extends Scene
 
         this.load.image('logo', 'logo.png');
         
-        this.load.spritesheet(
-            'wyvern',
-            'character/wyvern_composite.png',
-            { frameWidth: 256, frameHeight: 256 }
-        )
-        for (let variant of ['air', 'fire', 'water']) {
-            this.load.spritesheet(
-                'wyvern_' + variant,
-                'character/wyvern_' + variant + '.png',
-                { frameWidth: 256, frameHeight: 256 }
-            );
-        }
+        loadWyverns(this);
 
         this.load.spritesheet(
             'floor_tiles',

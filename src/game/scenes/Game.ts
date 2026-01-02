@@ -1,6 +1,6 @@
 import { Scene } from 'phaser';
-import { Wyvern } from '../game_objects/wyvern';
-import { WyvernController } from '../game_objects/wyvern_controller';
+import { WyvernController } from '../game_objects/wyvernController';
+import { WyvernDriver } from '../game_objects/wyvernDriver';
 import { Dungeon } from '../game_objects/dungeon';
 
 export class Game extends Scene
@@ -37,13 +37,15 @@ export class Game extends Scene
         });
         */
 
-        this.add.existing(new Dungeon(this, 512, 200));
+        //this.add.existing(new Dungeon(this, 512, 200));
 
-        const player = new Wyvern(this, 512, 384, 'air', 'medium');
-        this.add.existing(new WyvernController(player, this));
-        this.add.existing(new Wyvern(this, 300, 200, 'fire', 'small'));
-        this.add.existing(new Wyvern(this, 700, 500, 'water', 'large'));
+        //this.add.existing(new WyvernController(player, this));
 
-        this.camera.startFollow(player);
+        const player = this.add.sprite(400, 300, '');
+        new WyvernDriver(player, 'fire');
+        //fac.create(new WyvernDriver({ variant: 'fire' }), 300, 200);
+        //fac.create(new WyvernDriver({ variant: 'water' }), 700, 500);
+
+        //this.camera.startFollow(player);
     }
 }

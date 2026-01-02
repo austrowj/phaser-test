@@ -1,6 +1,13 @@
-import { Wyvern, Heading, Action } from '../game_objects/wyvern';
+import { WyvernDriver, Heading, Behavior } from './wyvernDriver';
 
 export class WyvernController extends Phaser.GameObjects.GameObject {
+
+    private currentSpeed = 0;
+    private topSpeed = 200;
+
+    public setSpeedFraction(fraction: number) {
+        this.currentSpeed = Math.min(this.topSpeed, fraction * this.topSpeed);
+    }
 
     private headingKeyState: Map<Phaser.Input.Keyboard.Key, number>;
     private keyStateToDirection: Map<number, Heading>;
@@ -9,8 +16,9 @@ export class WyvernController extends Phaser.GameObjects.GameObject {
     private dashAttack = {
         test: () => this.dashKey.isDown,
         cb: () => {
-            this.wyvern.setSpeedFraction(0);
-            this.wyvern.setAction(Action.Ram);
+            this.setSpeedFraction(0);
+            this.wyvern.currentBehavior = 'Ram';
+
             this.scene.tweens.add({
                 targets: this.wyvern,
                 // Make wyvern disappear then reappear at high speed.
@@ -20,11 +28,11 @@ export class WyvernController extends Phaser.GameObjects.GameObject {
                 yoyo: true,
                 onYoyo: () => {
                     // On yoyo (halfway point), set high speed.
-                    this.wyvern.setSpeedFraction(8);
+                    this.setSpeedFraction(8);
                 }
             })
             //this.scene.time.delayedCall(100, () => this.wyvern.setSpeedFraction(3), [], this);
-            this.scene.time.delayedCall(500, () => this.wyvern.setAction(Action.Hover), [], this);
+            this.scene.time.delayedCall(500, () => this.wyvern.currentBehavior = 'Hover', [], this);
         }
     }
 
@@ -33,8 +41,8 @@ export class WyvernController extends Phaser.GameObjects.GameObject {
     private breathAttack = {
         test: () => this.breathKey.isDown,
         cb: () => {
-            this.wyvern.setSpeedFraction(0);
-            this.wyvern.setAction(Action.Breathe);
+            this.setSpeedFraction(0);
+            this.wyvern.currentBehavior = 'Breathe';
             const breathPoint = this.wyvern.getBreathHardpoint();
             this.flames = this.scene.add.particles(breathPoint.x, breathPoint.y, 'flares', {
                 frame: 'white',
@@ -53,23 +61,23 @@ export class WyvernController extends Phaser.GameObjects.GameObject {
         }
     }
 
-    private stateTransitions: Map<Action, { test: () => boolean; cb: () => void }[]> = new Map([
-        [Action.Hover, [
+    private stateTransitions: Map<Behavior, { test: () => boolean; cb: () => void }[]> = new Map([
+        ['Hover', [
             this.dashAttack,
             this.breathAttack,
             { test: () => true, cb: () => this.fly() }
         ]],
-        [Action.Fly, [
+        ['Fly', [
             this.dashAttack,
             this.breathAttack,
             { test: () => true, cb: () => this.fly() }
         ]],
-        [Action.Ram, []],
-        [Action.Breathe, [
+        ['Ram', []],
+        ['Breathe', [
             {
                 test: () => !this.breathKey.isDown,
                 cb: () => {
-                    this.wyvern.setAction(Action.Hover);
+                    this.wyvern.currentBehavior = 'Hover';
                     if (this.flames) {
                         this.flames.stop();
                         this.flames = null;
@@ -80,7 +88,7 @@ export class WyvernController extends Phaser.GameObjects.GameObject {
     ])
 
     constructor(
-        public wyvern: Wyvern,
+        public wyvern: WyvernDriver,
         public scene: Phaser.Scene
     ) {
         super(scene, 'WyvernController');
@@ -99,18 +107,18 @@ export class WyvernController extends Phaser.GameObjects.GameObject {
             [scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D), 0x8]
         ]);
         this.keyStateToDirection = new Map([
-            [0x1, Heading.N],
-            [0x3, Heading.NW],
-            [0x2, Heading.W],
-            [0x6, Heading.SW],
-            [0x4, Heading.S],
-            [0xC, Heading.SE],
-            [0x8, Heading.E],
-            [0x9, Heading.NE]
+            [0x1, 'N'],
+            [0x3, 'NW'],
+            [0x2, 'W'],
+            [0x6, 'SW'],
+            [0x4, 'S'],
+            [0xC, 'SE'],
+            [0x8, 'E'],
+            [0x9, 'NE']
         ]);
 
         this.setInteractive();
-        wyvern.postFX.addGlow(parseInt('#ffffff'.substring(1), 16), 2, 0.5, false, .1, 4);
+        //wyvern.postFX.addGlow(parseInt('#ffffff'.substring(1), 16), 2, 0.5, false, .1, 4);
     }
 
     private fly() {
@@ -123,18 +131,18 @@ export class WyvernController extends Phaser.GameObjects.GameObject {
 
         const heading = this.keyStateToDirection.get(key_state);
         if (heading !== undefined && key_state > 0) {
-            this.wyvern.setHeading(heading);
-            this.wyvern.setAction(Action.Fly);
-            this.wyvern.setSpeedFraction(1);
+            this.wyvern.currentHeading = heading;
+            this.wyvern.currentBehavior = 'Fly';
+            this.setSpeedFraction(1);
         } else {
-            this.wyvern.setAction(Action.Hover);
-            this.wyvern.setSpeedFraction(0);
+            this.wyvern.currentBehavior = 'Hover';
+            this.setSpeedFraction(0);
         }
     }
 
     public preUpdate(time: number, delta: number): void {
 
-        const attempted_transitions = this.stateTransitions.get(this.wyvern.currentAction)?.filter(transition => transition.test());
+        const attempted_transitions = this.stateTransitions.get(this.wyvern.currentBehavior)?.filter(transition => transition.test());
         if (attempted_transitions && attempted_transitions.length > 0) {
             // Only do the first valid transition.
             const transition = attempted_transitions[0];
