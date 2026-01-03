@@ -10,9 +10,12 @@ export class Dungeon extends Phaser.Physics.Arcade.Sprite {
     ) {
         super(scene, x, y, 'floor_tiles');
         scene.add.existing(this);
+        console.log('Creating dungeon at', x, y);
 
         for (let i = 0; i < 30; i++) {
             for (let j = 0; j < 30; j++) {
+                if ( Phaser.Math.Between(0, 4) != 0) continue;
+
                 const tileIndex = floor_tile_indexes[
                     Phaser.Math.Between(0, floor_tile_indexes.length - 1)
                 ];
