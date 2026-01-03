@@ -1,6 +1,6 @@
 import { Scene } from 'phaser';
 import { TILE_WIDTH, TILE_HEIGHT } from '../game_objects/dungeon';
-import { load as loadWyverns } from '../game_objects/wyvernDriver';
+import { load as loadWyverns } from '../game_objects/wyvernAnimationDriver';
 
 export class Preloader extends Scene
 {

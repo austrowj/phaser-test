@@ -1,6 +1,8 @@
 import { Scene } from 'phaser';
-import { WyvernController } from '../game_objects/wyvernController';
-import { WyvernDriver } from '../game_objects/wyvernDriver';
+import { connectInputControls } from '../game_objects/wyvernInputController';
+import { WyvernSkillset } from '../game_objects/wyvernSkillset';
+import { WyvernAnimationDriver } from '../game_objects/wyvernAnimationDriver';
+import { createWyvern } from '../game_objects/wyvern';
 import { Dungeon } from '../game_objects/dungeon';
 
 export class Game extends Scene
@@ -37,13 +39,31 @@ export class Game extends Scene
         });
         */
 
-        this.add.existing(new Dungeon(this, 512, 200));
+        new Dungeon(this, 512, 200);
 
-        const player = new WyvernDriver(this.add.sprite(512, 384, ''), 'air');
-        new WyvernController(new WyvernDriver(this.add.sprite(300, 200, ''), 'fire'), this, 'small');
-        new WyvernController(new WyvernDriver(this.add.sprite(700, 500, ''), 'water'), this, 'large');
+        const playerSprite = this.physics.add.sprite(512, 384, '')
+        this.camera.startFollow(playerSprite);
+        createWyvern(
+            playerSprite,
+            new WyvernAnimationDriver('earth'),
+            new WyvernSkillset(),
+            'medium',
+            connectInputControls(this.input.keyboard!)
+        );
 
-        this.camera.startFollow(player.sprite);
-        new WyvernController(player, this);
+        createWyvern(
+            this.physics.add.sprite(700, 500, ''),
+            new WyvernAnimationDriver('water'),
+            new WyvernSkillset(),
+            'large'
+        );
+        
+        createWyvern(
+            this.physics.add.sprite(300, 200, ''),
+            new WyvernAnimationDriver('fire'),
+            new WyvernSkillset(),
+            'small'
+        );
+
     }
 }
