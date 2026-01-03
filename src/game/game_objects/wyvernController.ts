@@ -1,104 +1,133 @@
-import { WyvernDriver, Heading, Behavior } from './wyvernDriver';
+import { WyvernDriver, Heading } from './wyvernDriver';
+import { StateMachine } from '../../util/stateMachine';
+
+type Action = 'Idle' | 'Move' | 'Dash' | 'BreathAttack' | 'Interrupt_Breath' | 'Done';
+
+const sizeConfig = {
+    'small':  { scale: 0.25, rate: 18, topSpeed: 300 },
+    'medium': { scale: 0.50, rate: 12, topSpeed: 200 },
+    'large':  { scale: 1.00, rate:  8, topSpeed: 150 }
+}
 
 export class WyvernController extends Phaser.GameObjects.GameObject {
 
     private currentSpeed = 0;
-    private topSpeed = 200;
+    private topSpeed: number;
+
+    private wyvernBody: Phaser.Physics.Arcade.Body;
 
     public setSpeedFraction(fraction: number) {
-        this.currentSpeed = Math.min(this.topSpeed, fraction * this.topSpeed);
+        this.currentSpeed = Math.max(fraction * this.topSpeed, 0);
     }
 
     private headingKeyState: Map<Phaser.Input.Keyboard.Key, number>;
     private keyStateToDirection: Map<number, Heading>;
 
-    private dashKey: Phaser.Input.Keyboard.Key;
-    private dashAttack = {
-        test: () => this.dashKey.isDown,
-        cb: () => {
-            this.setSpeedFraction(0);
-            this.wyvern.currentBehavior = 'Ram';
-
-            this.scene.tweens.add({
-                targets: this.wyvern,
-                // Make wyvern disappear then reappear at high speed.
-                alpha: { from: 1, to: 0 },
-                ease: 'Cubic.inOut',
-                duration: 250,
-                yoyo: true,
-                onYoyo: () => {
-                    // On yoyo (halfway point), set high speed.
-                    this.setSpeedFraction(8);
-                }
-            })
-            //this.scene.time.delayedCall(100, () => this.wyvern.setSpeedFraction(3), [], this);
-            this.scene.time.delayedCall(500, () => this.wyvern.currentBehavior = 'Hover', [], this);
-        }
-    }
-
-    private breathKey: Phaser.Input.Keyboard.Key;
     private flames: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
-    private breathAttack = {
-        test: () => this.breathKey.isDown,
-        cb: () => {
-            this.setSpeedFraction(0);
-            this.wyvern.currentBehavior = 'Breathe';
-            const breathPoint = this.wyvern.getBreathHardpoint();
-            this.flames = this.scene.add.particles(breathPoint.x, breathPoint.y, 'flares', {
-                frame: 'white',
-                color: [0xfacc22, 0xf89800, 0xf83600, 0x9f0404],
-                colorEase: 'quad.out',
-                lifespan: 500,
-                scale: { start: 0.4, end: 0.1, ease: 'sine.out' },
-                speed: 300,
-                angle: this.wyvern.getHeadingConeAngleDegrees(),
-                advance: 200,
-                frequency: 20,
-                blendMode: 'ADD',
-                //duration: 1000,
-            });
-            this.flames.setDepth(1);
-        }
-    }
 
-    private stateTransitions: Map<Behavior, { test: () => boolean; cb: () => void }[]> = new Map([
-        ['Hover', [
-            this.dashAttack,
-            this.breathAttack,
-            { test: () => true, cb: () => this.fly() }
-        ]],
-        ['Fly', [
-            this.dashAttack,
-            this.breathAttack,
-            { test: () => true, cb: () => this.fly() }
-        ]],
-        ['Ram', []],
-        ['Breathe', [
-            {
-                test: () => !this.breathKey.isDown,
-                cb: () => {
-                    this.wyvern.currentBehavior = 'Hover';
-                    if (this.flames) {
-                        this.flames.stop();
-                        this.flames = null;
-                    }
-                }
-            }
-        ]]
-    ])
+    private fsm: StateMachine<Action>
 
     constructor(
-        public wyvern: WyvernDriver,
-        public scene: Phaser.Scene
+        public driver: WyvernDriver,
+        public scene: Phaser.Scene,
+        size: keyof typeof sizeConfig = 'medium'
     ) {
         super(scene, 'WyvernController');
+        
+        scene.physics.add.existing(this.driver.sprite);
+        this.wyvernBody = this.driver.sprite.body as Phaser.Physics.Arcade.Body;
+        
+        this.wyvernBody.setCircle(20, 108, 100);
+        this.driver.sprite.setScale(sizeConfig[size].scale);
+        this.topSpeed = sizeConfig[size].topSpeed;
+
+        this.fsm = new StateMachine<Action>('Idle')
+            .addTransition('Idle', 'Move')
+            .addTransition('Idle', 'Dash')
+            .addTransition('Idle', 'BreathAttack')
+
+            .addTransition('Move', 'Idle')
+            .addTransition('Move', 'Dash')
+            .addTransition('Move', 'BreathAttack')
+
+            .addTransition('Dash', 'Done')
+            .addTransition('Done', 'Idle')
+            .addTransition('BreathAttack', 'Interrupt_Breath')
+            .addTransition('Interrupt_Breath', 'Idle')
+
+            .respondTo('enter_Idle', () => {
+                this.driver.setAnimation('Idle');
+                this.setSpeedFraction(0);
+            })
+            .respondTo('enter_Move', () => {
+                this.driver.setAnimation('Move');
+                this.setSpeedFraction(1);
+            })
+            .respondTo('enter_Dash', () => {
+                this.setSpeedFraction(0);
+                this.driver.setAnimation('Dash');
+                this.scene.tweens.add({
+                    targets: this.driver.sprite,
+                    // Make wyvern disappear then reappear at high speed.
+                    alpha: { from: 1, to: 0 },
+                    ease: 'Cubic.inOut',
+                    duration: 250,
+                    yoyo: true,
+                    onYoyo: () => {
+                        // On yoyo (halfway point), set high speed.
+                        this.setSpeedFraction(8);
+                    }
+                })
+                //this.scene.time.delayedCall(100, () => this.driver.setSpeedFraction(3), [], this);
+                this.scene.time.delayedCall(500, () => this.fsm.send('Done'), [], this);
+            })
+            .respondTo('enter_BreathAttack', () => {
+                this.setSpeedFraction(0);
+                this.driver.setAnimation('BreathAttack');
+                const breathPoint = {
+                    x: this.driver.sprite.x + this.driver.getHeadingVector().x * 50 * this.driver.sprite.scale,
+                    y: this.driver.sprite.y + this.driver.getHeadingVector().y * 50 * this.driver.sprite.scale
+                };
+                this.flames = this.scene.add.particles(breathPoint.x, breathPoint.y, 'flares', {
+                    frame: 'white',
+                    color: [0xfacc22, 0xf89800, 0xf83600, 0x9f0404],
+                    colorEase: 'quad.out',
+                    lifespan: 1000 * this.driver.sprite.scale,
+                    scale: {
+                        start: 0.8 * this.driver.sprite.scale,
+                        end: 0.1 * this.driver.sprite.scale,
+                        ease: 'sine.out'
+                    },
+                    speed: 600 / (this.driver.sprite.scale + 1),
+                    angle: this.driver.getHeadingConeAngleDegrees(),
+                    advance: 200,
+                    frequency: 20,
+                    blendMode: 'ADD',
+                    //duration: 1000,
+                });
+                this.flames.setDepth(1);
+            })
+            .respondTo('leave_BreathAttack', () => {
+                if (this.flames) {
+                    this.flames.stop();
+                    this.flames = null;
+                }
+            })
+            .respondTo('enter_Interrupt_Breath', () => {
+                this.fsm.send('Idle');
+            })
+            .respondTo('enter_Done', () => {
+                this.fsm.send('Idle');
+            })
+        ;
 
         if (!scene.input.keyboard) {
             throw new Error("WyvernController requires keyboard input");
         }
 
-        this.dashKey = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.PERIOD);
-        this.breathKey = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.COMMA);
+        scene.input.keyboard.on('keydown-PERIOD', () => { this.fsm.send('Dash'); });
+        scene.input.keyboard.on('keydown-COMMA',  () => { this.fsm.send('BreathAttack'); });
+        scene.input.keyboard.on('keyup-COMMA',    () => { this.fsm.send('Interrupt_Breath'); });
 
         this.headingKeyState = new Map<Phaser.Input.Keyboard.Key, number>([
             [scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W), 0x1],
@@ -117,8 +146,8 @@ export class WyvernController extends Phaser.GameObjects.GameObject {
             [0x9, 'NE']
         ]);
 
-        this.setInteractive();
-        //wyvern.postFX.addGlow(parseInt('#ffffff'.substring(1), 16), 2, 0.5, false, .1, 4);
+        scene.add.existing(this);
+        this.driver.sprite.postFX.addGlow(parseInt('#ffffff'.substring(1), 16), 2, 0.5, false, .1, 4);
     }
 
     private fly() {
@@ -131,23 +160,25 @@ export class WyvernController extends Phaser.GameObjects.GameObject {
 
         const heading = this.keyStateToDirection.get(key_state);
         if (heading !== undefined && key_state > 0) {
-            this.wyvern.currentHeading = heading;
-            this.wyvern.currentBehavior = 'Fly';
-            this.setSpeedFraction(1);
+            this.fsm.send('Move');
+            if (this.fsm.getState() === 'Move') {
+                this.driver.setHeading(heading);
+            }
         } else {
-            this.wyvern.currentBehavior = 'Hover';
-            this.setSpeedFraction(0);
+            this.fsm.send('Idle');
         }
     }
 
     public preUpdate(time: number, delta: number): void {
-
-        const attempted_transitions = this.stateTransitions.get(this.wyvern.currentBehavior)?.filter(transition => transition.test());
-        if (attempted_transitions && attempted_transitions.length > 0) {
-            // Only do the first valid transition.
-            const transition = attempted_transitions[0];
-            transition.cb();
+        
+        if (this.fsm.getState() === 'Move' || this.fsm.getState() === 'Idle') {
+            this.fly();
         }
+        
+        this.wyvernBody.setVelocity(
+            this.driver.getHeadingVector().x * this.currentSpeed,
+            this.driver.getHeadingVector().y * this.currentSpeed
+        );
 
         time + delta;
     }

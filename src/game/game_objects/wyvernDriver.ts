@@ -4,7 +4,7 @@ export class WyvernDriver {
     private currentHeading: Heading = 'S';
     private currentAnimation: string = 'Idle';
     constructor(
-        private sprite: Phaser.GameObjects.Sprite,
+        public readonly sprite: Phaser.GameObjects.Sprite,
         private variant: Variant = 'earth',
     ) {
         this.updateAnimation();
@@ -28,15 +28,6 @@ export class WyvernDriver {
         return Headings[this.currentHeading].vector;
     }
 
-    public getBreathHardpoint(): Phaser.Math.Vector2 {
-        //  Hardpoint is roughly in front of the wyvern's mouth.
-        const headingVector = this.getHeadingVector();
-        return new Phaser.Math.Vector2(
-            headingVector.x * 30,
-            headingVector.y * 30
-        );
-    }
-
     public getHeadingConeAngleDegrees(): {min: number, max: number} {
         const headingVector = this.getHeadingVector();
         const base = Phaser.Math.RadToDeg(Math.atan2(headingVector.y, headingVector.x));
@@ -44,7 +35,8 @@ export class WyvernDriver {
     }
 }
 
-type Heading = keyof typeof Headings;
+export type Heading = keyof typeof Headings;
+
 type Behavior = keyof typeof Behaviors;
 type WyvernFrameIndex = typeof Headings[keyof typeof Headings]['index'];
 

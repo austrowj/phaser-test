@@ -21,6 +21,17 @@
             { "frame": 4 }, { "frame": 5 }, { "frame": 6 }, { "frame": 7 }
         ]
     },
+    "Dash": {
+        "base": "Ram",
+        "animConfig": {
+            "frameRate": 20,
+            "repeat": 0
+        },
+        "framesTemplate": [
+            { "frame": 0 }, { "frame": 1 }, { "frame": 2 }, { "frame": 3, "duration": 400 },
+            { "frame": 4 }, { "frame": 5 }, { "frame": 6 }, { "frame": 7 }
+        ]
+    },
     "BreathAttack":{
         "base": "Breathe",
         "animConfig" : {
