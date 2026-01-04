@@ -1,8 +1,8 @@
 import { Scene } from 'phaser';
 import { createInputControls } from '../game_objects/wyvernInputController';
-import { Controls, WyvernSkillset } from '../game_objects/wyvernSkillset';
+import { Controls, WyvernBasicSkillset } from '../game_objects/wyvernBasicSkillset';
 import { WyvernAnimationDriver } from '../game_objects/wyvernAnimationDriver';
-import { createWyvern } from '../game_objects/wyvern';
+import { createWyvern, Wyvern } from '../game_objects/wyvern';
 import { Dungeon } from '../game_objects/dungeon';
 import { Communicator } from '../../util/communicator';
 
@@ -41,21 +41,21 @@ export class Game extends Scene
         this.controlBridge = createInputControls(this.input.keyboard!);
         const wyverns = [
             createWyvern(
-                this.physics.add.sprite(512, 384, ''),
+                this.physics.add.sprite(512, 384, ''), // Sprite key will be overridden by animation driver.
                 new WyvernAnimationDriver('air'),
-                new WyvernSkillset(),
+                new WyvernBasicSkillset(),
                 'medium'
             ),
             createWyvern(
                 this.physics.add.sprite(700, 500, ''),
                 new WyvernAnimationDriver('water'),
-                new WyvernSkillset(),
+                new WyvernBasicSkillset(),
                 'large'
             ),
             createWyvern(
                 this.physics.add.sprite(300, 200, ''),
                 new WyvernAnimationDriver('fire'),
-                new WyvernSkillset(),
+                new WyvernBasicSkillset(),
                 'small'
             ),
         ];
@@ -82,10 +82,9 @@ export class Game extends Scene
     }
 
     private controlBridge: Communicator<Controls>;
+    private player: Wyvern;
 
-    private player: ReturnType<typeof createWyvern> | null = null;
-
-    private choosePlayer(obj: ReturnType<typeof createWyvern>) {
+    private choosePlayer(obj: Wyvern) {
         if (this.player) {
             this.player.sprite.postFX.clear();
         }

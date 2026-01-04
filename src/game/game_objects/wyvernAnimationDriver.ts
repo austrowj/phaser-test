@@ -5,7 +5,7 @@ import { Heading } from '../world/parameters';
 // Designed for external use and/or reference.
 
 export type WyvernAnimation = typeof WyvernAnimations[number];
-const WyvernAnimations = ['Idle', 'Move', 'Dash', 'BreathAttack'] as const;
+const WyvernAnimations = ['Idle', 'Move', 'Dash', 'BreathAttack', 'WingBlast'] as const;
 
 export class WyvernAnimationDriver {
 

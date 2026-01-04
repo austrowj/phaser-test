@@ -1,17 +1,19 @@
 import { WyvernAnimationDriver } from "./wyvernAnimationDriver";
-import { WyvernSkillset, Controls } from "./wyvernSkillset";
+import { WyvernBasicSkillset, Controls } from "./wyvernBasicSkillset";
 import { Communicator } from "../../util/communicator";
 
 const sizeConfig = {
-    'small':  { scale: 0.25, rate: 18, topSpeed: 300 },
-    'medium': { scale: 0.50, rate: 12, topSpeed: 200 },
-    'large':  { scale: 1.00, rate:  8, topSpeed: 150 }
+    'small':  { scale: 0.25, rate: 1.5, topSpeed: 300 },
+    'medium': { scale: 0.50, rate: 1.0, topSpeed: 200 },
+    'large':  { scale: 1.00, rate: 0.7, topSpeed: 150 }
 }
+
+export type Wyvern = ReturnType<typeof createWyvern>;
 
 export function createWyvern(
     sprite: Phaser.GameObjects.Sprite,
     driver: WyvernAnimationDriver,
-    skillset: WyvernSkillset,
+    skillset: WyvernBasicSkillset,
     size: keyof typeof sizeConfig = 'medium',
     controlBridge?: Communicator<Controls>
 ) {
@@ -19,6 +21,10 @@ export function createWyvern(
     const body = sprite.body as Phaser.Physics.Arcade.Body;
     body.setCircle(20, 108, 100);
     sprite.setScale(sizeConfig[size].scale);
+
+    // Adjust animation speed based on size.
+    sprite.anims.timeScale = sizeConfig[size].rate;
+    skillset.setTimeRate(sizeConfig[size].rate);
 
     // Connect the animation driver to the actual sprite.
     driver.comms.when('change', (animationKey) => sprite.play(animationKey, true));

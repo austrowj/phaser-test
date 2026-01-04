@@ -1,6 +1,6 @@
 import { Communicator } from '../../util/communicator';
 import { Heading } from '../world/parameters';
-import { Controls } from './wyvernSkillset';
+import { Controls } from './wyvernBasicSkillset';
 
 export function createInputControls(keyboard: Phaser.Input.Keyboard.KeyboardPlugin) {
     
@@ -28,6 +28,7 @@ export function createInputControls(keyboard: Phaser.Input.Keyboard.KeyboardPlug
         key.on('up',   () => { bridge.send('steer', updateAimFromKeyState()); });
     });
     keyboard.on('keydown-PERIOD', () => { bridge.send('dash'); });
+    keyboard.on('keydown-SPACE',  () => { bridge.send('wingBlast'); });
     keyboard.on('keydown-COMMA',  () => { bridge.send('breath'); });
     keyboard.on('keyup-COMMA',    () => { bridge.send('interruptBreath'); });
 
