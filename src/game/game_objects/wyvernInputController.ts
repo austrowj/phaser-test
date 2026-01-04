@@ -1,5 +1,5 @@
 import { Communicator } from '../../util/communicator';
-import { Heading } from './wyvernAnimationDriver';
+import { Heading } from '../world/parameters';
 import { Controls } from './wyvernSkillset';
 
 export function createInputControls(keyboard: Phaser.Input.Keyboard.KeyboardPlugin) {

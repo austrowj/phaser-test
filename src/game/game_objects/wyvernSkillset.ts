@@ -1,6 +1,7 @@
 import { StateMachine } from '../../util/stateMachine';
 import { Communicator } from '../../util/communicator';
-import { Heading, WyvernAnimation, Headings } from './wyvernAnimationDriver';
+import { Heading, HeadingVectors } from '../world/parameters';
+import { WyvernAnimation } from './wyvernAnimationDriver';
 
 type WyvernState = 'Idle' | 'Move' | 'Dash' | 'BreathAttack' | 'InterruptBreath' | 'Done';
 
@@ -20,7 +21,7 @@ export class WyvernSkillset {
         setAnimation: (animation: WyvernAnimation) => void,
         useSkill: (callback: (
             sprite: Phaser.GameObjects.Sprite,
-            headingVector: Phaser.Math.Vector2
+            heading: Heading,
         ) => void ) => void,
     }>();
 
@@ -72,7 +73,7 @@ export class WyvernSkillset {
             .when('tick_Move', () => {
                 if (this.aim) {
                     this.comms.send('setHeading', this.aim);
-                    this.comms.send('go', Headings[this.aim].vector, 1.0);
+                    this.comms.send('go', HeadingVectors[this.aim], 1.0);
                 }
                 else {
                     this.fsm.send('Idle');
@@ -81,7 +82,8 @@ export class WyvernSkillset {
             
             .when('enter_Dash', () => {
                 this.comms.send('setAnimation', 'Dash');
-                this.comms.send('useSkill', (sprite, headingVector) => {
+                this.comms.send('useSkill', (sprite, heading) => {
+                    const headingVector = HeadingVectors[heading];
                     sprite.scene.tweens.add({
                         targets: sprite,
                         // Make wyvern disappear then reappear at high speed.
@@ -99,7 +101,9 @@ export class WyvernSkillset {
             })
             .when('enter_BreathAttack', () => {
                 this.comms.send('setAnimation', 'BreathAttack');
-                this.comms.send('useSkill', (sprite, headingVector) => {
+                this.comms.send('useSkill', (sprite, heading) => {
+
+                    const headingVector = HeadingVectors[heading];
 
                     const breathPoint = {
                         x: sprite.x + headingVector.x * 50 * sprite.scale,

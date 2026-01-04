@@ -32,7 +32,7 @@ export function createWyvern(
             vector.x * scale * sizeConfig[size].topSpeed,
             vector.y * scale * sizeConfig[size].topSpeed
         ))
-        .when('useSkill', (callback) => callback(sprite, driver.getHeadingVector()));
+        .when('useSkill', (callback) => callback(sprite, driver.getCurrentHeading()));
     
     if (controlBridge) { skillset.listenTo(controlBridge); }
     

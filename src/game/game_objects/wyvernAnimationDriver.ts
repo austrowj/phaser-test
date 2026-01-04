@@ -1,14 +1,11 @@
 import * as z from 'zod';
 import { Communicator } from '../../util/communicator';
+import { Heading } from '../world/parameters';
 
 // Designed for external use and/or reference.
 
-const WyvernAnimations = ['Idle', 'Move', 'Dash', 'BreathAttack'] as const;
-
-type AnimationKey = `${Variant}_${WyvernAnimation}_${Heading}`;
-
-export type Heading = keyof typeof Headings;
 export type WyvernAnimation = typeof WyvernAnimations[number];
+const WyvernAnimations = ['Idle', 'Move', 'Dash', 'BreathAttack'] as const;
 
 export class WyvernAnimationDriver {
 
@@ -18,45 +15,48 @@ export class WyvernAnimationDriver {
         //animationChange: (animation: WyvernAnimation) => void,
     }>();
 
+    public getCurrentHeading() { return this.currentHeading; }
+    public getCurrentAnimation() { return this.currentAnimation; }
+
     private currentHeading: Heading = 'S';
     private currentAnimation: WyvernAnimation;
 
     constructor(private variant: Variant) { this.setAnimation('Idle'); }
 
-    private getAnimation(): AnimationKey {
+    private getAnimationKey(): AnimationKey {
         return `${this.variant}_${this.currentAnimation}_${this.currentHeading}`;
     }
 
     public setHeading(heading: Heading) {
         this.currentHeading = heading;
-        this.comms.send('change', this.getAnimation());
+        this.comms.send('change', this.getAnimationKey());
         //this.comms.send('headingChange', heading);
     }
 
     public setAnimation(animation: WyvernAnimation) {
         this.currentAnimation = animation;
-        this.comms.send('change', this.getAnimation());
+        this.comms.send('change', this.getAnimationKey());
         //this.comms.send('animationChange', animation);
     }
-    
-    public getHeadingVector(): Phaser.Math.Vector2 {
-        return Headings[this.currentHeading].vector;
-    }
 }
+
+// Internal convention
+
+type AnimationKey = `${Variant}_${WyvernAnimation}_${Heading}`;
 
 // Data-driven definitions.
 
 const Variants = ['earth', 'air', 'fire', 'water'] as const;
 
-export const Headings = {
-    W:  { index: 0, vector: new Phaser.Math.Vector2(-1,  0).normalize() },
-    NW: { index: 1, vector: new Phaser.Math.Vector2(-2, -1).normalize() },
-    N:  { index: 2, vector: new Phaser.Math.Vector2( 0, -1).normalize() },
-    NE: { index: 3, vector: new Phaser.Math.Vector2( 2, -1).normalize() },
-    E:  { index: 4, vector: new Phaser.Math.Vector2( 1,  0).normalize() },
-    SE: { index: 5, vector: new Phaser.Math.Vector2( 2,  1).normalize() },
-    S:  { index: 6, vector: new Phaser.Math.Vector2( 0,  1).normalize() },
-    SW: { index: 7, vector: new Phaser.Math.Vector2(-2,  1).normalize() },
+const HeadingIndexes: Record<Heading, number> = {
+    W:  0,
+    NW: 1,
+    N:  2,
+    NE: 3,
+    E:  4,
+    SE: 5,
+    S:  6,
+    SW: 7,
 } as const;
 
 const BaseBehaviors = {
@@ -73,7 +73,7 @@ const BaseBehaviors = {
 
 type Variant = typeof Variants[number];
 type BaseBehavior = keyof typeof BaseBehaviors;
-type WyvernFrameIndex = typeof Headings[keyof typeof Headings]['index'];
+type WyvernFrameIndex = typeof HeadingIndexes[keyof typeof HeadingIndexes];
 
 const WyvernAnimationDefinition = z.strictObject({
     base: z.union(Object.keys(BaseBehaviors).map(k => z.literal(k as BaseBehavior))),
@@ -91,7 +91,7 @@ const WyvernAnimationDefinition = z.strictObject({
         randomFrames: z.boolean().optional()
     }),
     framesTemplate: z.array(z.strictObject({
-        frame: z.union(Object.values(Headings).map(h => z.literal(h.index as WyvernFrameIndex))),
+        frame: z.union(Object.values(HeadingIndexes).map((index) => z.literal(index))),
         duration: z.number().optional(),
         visible: z.boolean().optional()
     }))
@@ -119,7 +119,7 @@ function createAnimationConfigs(
     }
 ): Phaser.Types.Animations.Animation[] {
 
-    return Object.entries(Headings).map(([heading, headingData]) => ({
+    return Object.entries(HeadingIndexes).map(([heading, index]) => ({
         ...params.animConfig,
         defaultTextureKey: variantSpriteKey(variant),
         frames: params.framesTemplate.map(frame => ({
@@ -127,7 +127,7 @@ function createAnimationConfigs(
             frame:
                 frame.frame
                 + BaseBehaviors[params.base].index*8
-                + headingData.index*8*7
+                + index*8*7
         })),
         key: key + '_' + heading
     }));
