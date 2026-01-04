@@ -11,4 +11,8 @@ export class Communicator<EventMap extends Record<string, (...args: any[]) => vo
         this.emitter.emit(event, ...args);
     }
 
+    public removeListeners() {
+        this.emitter.removeAllListeners();
+    }
+
 }

@@ -44,6 +44,12 @@ export class Preloader extends Scene
             { frameWidth: TILE_WIDTH, frameHeight: TILE_HEIGHT }
         );
 
+        this.load.spritesheet(
+            'mouse_cursor',
+            'denzi_iso/img/32x32_mouse_pointer_Denzi040418.gif',
+            { frameWidth: 32, frameHeight: 32 }
+        );
+
         this.load.atlas('flares', 'effects/flares.png', 'effects/flares.json');
     }
 

@@ -24,7 +24,7 @@ export class WyvernSkillset {
         ) => void ) => void,
     }>();
 
-    public connectControls(bridge = new Communicator<Controls>()) {
+    public listenTo(bridge: Communicator<Controls>) {
         return bridge
             .when('steer', (heading) => this.aim = heading)
             .when('breath', () => this.fsm.send('BreathAttack'))
@@ -91,7 +91,7 @@ export class WyvernSkillset {
                         yoyo: true,
                         onYoyo: () => {
                             // On yoyo (halfway point), set high speed.
-                            this.comms.send('go', headingVector, 8.0);
+                            this.comms.send('go', headingVector, 6.0);
                         }
                     });
                     sprite.scene.time.delayedCall(500, () => this.fsm.send('Done'), [], this);
@@ -139,7 +139,6 @@ export class WyvernSkillset {
             .when('enter_Done', () => { this.fsm.send('Idle'); })
         ;
 
-        //this.sprite.postFX.addGlow(parseInt('#ffffff'.substring(1), 16), 2, 0.5, false, .1, 4);
     }
 
 }

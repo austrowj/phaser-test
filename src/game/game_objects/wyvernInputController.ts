@@ -2,10 +2,10 @@ import { Communicator } from '../../util/communicator';
 import { Heading } from './wyvernAnimationDriver';
 import { Controls } from './wyvernSkillset';
 
-export function connectInputControls(
-    keyboard: Phaser.Input.Keyboard.KeyboardPlugin,
-    bridge = new Communicator<Controls>(),
-) {
+export function createInputControls(keyboard: Phaser.Input.Keyboard.KeyboardPlugin) {
+    
+    const bridge = new Communicator<Controls>()
+
     const headingKeyState = new Map<Phaser.Input.Keyboard.Key, number>([
         [keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W), 0x1],
         [keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A), 0x2],

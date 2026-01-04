@@ -34,9 +34,11 @@ export function createWyvern(
         ))
         .when('useSkill', (callback) => callback(sprite, driver.getHeadingVector()));
     
-    if (controlBridge) { skillset.connectControls(controlBridge); }
+    if (controlBridge) { skillset.listenTo(controlBridge); }
     
     // Initialize animation state.
     driver.setAnimation('Idle');
     skillset.startTick(sprite.scene);
+
+    return { sprite, driver, skillset, size, controlBridge };
 }
