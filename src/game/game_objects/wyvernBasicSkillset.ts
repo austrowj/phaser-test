@@ -1,7 +1,7 @@
 import { StateMachine } from '../../util/stateMachine';
 import { Communicator } from '../../util/communicator';
 import { Heading, HeadingVectors } from '../world/parameters';
-import { WyvernAnimation } from './wyvernAnimationDriver';
+import { WyvernAnimation } from './wyvernAnimationData';
 
 type WyvernState = 'Idle' | 'Move' | 'Dash' | 'WingBlast' | 'BreathAttack' | 'InterruptBreath' | 'Done';
 
