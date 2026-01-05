@@ -12,22 +12,23 @@ export class Dungeon {
     constructor(
         scene: Phaser.Scene, x: number, y: number
     ) {
-        const container = scene.add.container(x, y);
         console.log('Creating dungeon at', x, y);
 
-        for (let i = 0; i < 30; i++) {
-            for (let j = 0; j < 30; j++) {
-                //if ( Phaser.Math.Between(0, 4) != 0) continue;
-
-                const tileIndex = floor_tile_indexes[
-                    Phaser.Math.Between(0, floor_tile_indexes.length - 1)
-                ];
-                container.add(scene.add.image(
-                    i * TILE_WIDTH / 2 - j * TILE_WIDTH / 2,
-                    i * TILE_HEIGHT / 2 + j * TILE_HEIGHT / 2,
-                    'floor_tiles',
-                    tileIndex
-                ));
+        const mapData = new Phaser.Tilemaps.MapData({
+            tileWidth: TILE_WIDTH,
+            tileHeight: TILE_HEIGHT,
+            width: 30,
+            height: 30,
+            orientation: Phaser.Tilemaps.Orientation.ISOMETRIC
+        });
+        const map = new Phaser.Tilemaps.Tilemap(scene, mapData); // Apparently this adds the tilemap to the scene as a side effect.
+        const tiles = map.addTilesetImage('floor_tiles')!;
+        const layer = map.createBlankLayer('floor', tiles)!;
+        layer.setPosition(x, y);
+        for (var i = 0; i < 30; i++) {
+            for (var j = 0; j < 30; j++) {
+                // Notes: i=0 corresponds to "northeast" edge.
+                map.putTileAt(i == 0 ? 0 : floor_tile_indexes[Phaser.Math.Between(0, floor_tile_indexes.length - 1)], j, i, false, layer);
             }
         }
     }

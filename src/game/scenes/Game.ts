@@ -36,24 +36,24 @@ export class Game extends Scene
         this.msg_text.setOrigin(0.5);
         this.msg_text.setDepth(10);
 
-        new Dungeon(this, 512, 200);
+        new Dungeon(this, 512, 300);
 
         this.controlBridge = createInputControls(this.input.keyboard!);
         const wyverns = [
             createWyvern(
-                this.physics.add.sprite(512, 384, ''), // Sprite key will be overridden by animation driver.
+                this.physics.add.sprite(512, 300, ''), // Sprite key will be overridden by animation driver.
                 new WyvernAnimationDriver('air'),
                 new WyvernBasicSkillset(),
                 'medium'
             ),
             createWyvern(
-                this.physics.add.sprite(700, 500, ''),
+                this.physics.add.sprite(712, 500, ''),
                 new WyvernAnimationDriver('water'),
                 new WyvernBasicSkillset(),
                 'large'
             ),
             createWyvern(
-                this.physics.add.sprite(300, 200, ''),
+                this.physics.add.sprite(312, 500, ''),
                 new WyvernAnimationDriver('fire'),
                 new WyvernBasicSkillset(),
                 'small'
