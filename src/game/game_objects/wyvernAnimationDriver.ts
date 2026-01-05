@@ -1,36 +1,9 @@
 import { Communicator } from '../../util/communicator';
 import { Heading } from '../world/parameters';
-import { animationData, WyvernAnimation } from './wyvernAnimationData';
-
-const HeadingIndexes = {
-    W:  0,
-    NW: 1,
-    N:  2,
-    NE: 3,
-    E:  4,
-    SE: 5,
-    S:  6,
-    SW: 7,
-} as const satisfies Record<Heading, number>;
-type WyvernFrameIndex = typeof HeadingIndexes[keyof typeof HeadingIndexes];
-
-const Variants = ['earth', 'air', 'fire', 'water'] as const;
-type Variant = typeof Variants[number];
-
-type AnimationKey = `${Variant}_${WyvernAnimation}_${Heading}`;
-
-const BaseBehaviors = {
-    Hover:   { index: 0 },
-    Fly:     { index: 1 },
-    Sting:   { index: 2 },
-    Breathe: { index: 3 },
-    Ram:     { index: 4 },
-    Hit:     { index: 5 },
-    Die:     { index: 6 },
-} as const;
-type BaseBehavior = keyof typeof BaseBehaviors;
 
 // Designed for external use and/or reference.
+export type WyvernAnimation = keyof typeof animationData;
+export function load(scene: Phaser.Scene) { loadInternal(scene); }
 
 export class WyvernAnimationDriver {
 
@@ -65,30 +38,58 @@ export class WyvernAnimationDriver {
     }
 }
 
-function variantSpriteKey(variant: Variant): string {
-    return 'wyvern_' + variant;
+// Internal definitions below.
+
+const HeadingIndexes = {
+    W:  0,
+    NW: 1,
+    N:  2,
+    NE: 3,
+    E:  4,
+    SE: 5,
+    S:  6,
+    SW: 7,
+} as const satisfies Record<Heading, number>;
+type WyvernFrameIndex = typeof HeadingIndexes[keyof typeof HeadingIndexes];
+
+const Variants = ['earth', 'air', 'fire', 'water'] as const;
+type Variant = typeof Variants[number];
+
+type AnimationKey = `${Variant}_${WyvernAnimation}_${Heading}`;
+
+const BaseBehaviors = {
+    Hover:   { index: 0 },
+    Fly:     { index: 1 },
+    Sting:   { index: 2 },
+    Breathe: { index: 3 },
+    Ram:     { index: 4 },
+    Hit:     { index: 5 },
+    Die:     { index: 6 },
+} as const;
+type BaseBehavior = keyof typeof BaseBehaviors;
+
+type AnimationParams = {
+    base: BaseBehavior,
+    animConfig: Phaser.Types.Animations.Animation & {
+        frames?: never,
+        defaultTextureKey?: never,
+        key?: never,
+    },
+    framesTemplate: (Phaser.Types.Animations.AnimationFrame & {
+        key?: never,
+        frame: WyvernFrameIndex
+    })[]
 }
 
 function createAnimationConfigs(
     key: string,
     variant: Variant,
-    params: {
-        base: BaseBehavior,
-        animConfig: Phaser.Types.Animations.Animation & {
-            frames?: never,
-            defaultTextureKey?: never,
-            key?: never,
-        },
-        framesTemplate: readonly (Phaser.Types.Animations.AnimationFrame & {
-            key?: never,
-            frame: WyvernFrameIndex
-        })[]
-    }
+    params: AnimationParams
 ): Phaser.Types.Animations.Animation[] {
 
     return Object.entries(HeadingIndexes).map(([heading, index]) => ({
         ...params.animConfig,
-        defaultTextureKey: variantSpriteKey(variant),
+        defaultTextureKey: "wyvern_" + variant,
         frames: params.framesTemplate.map(frame => ({
             ...frame,
             frame:
@@ -102,14 +103,16 @@ function createAnimationConfigs(
 
 // Loader function to be called in a Phaser scene's preload().
 
-export function load(scene: Phaser.Scene) {
+function loadInternal(scene: Phaser.Scene) {
 
     Variants.forEach(variant => {
-        scene.load.spritesheet(
-            'wyvern_' + variant,
-            'character/wyvern_' + variant + '.png',
-            { frameWidth: 256, frameHeight: 256 }
-        );
+        if (variant !== 'earth') { // Skip because we're not using it for testing.
+            scene.load.spritesheet(
+                'wyvern_' + variant,
+                'character/wyvern_' + variant + '.png',
+                { frameWidth: 256, frameHeight: 256 }
+            );
+        }
     });
 
     scene.load.on('complete', () => { // Eagerly register all the animations for every variant.
@@ -127,3 +130,80 @@ export function load(scene: Phaser.Scene) {
         console.log("Wyvern animations created.");
     });
 }
+
+// The actual animation data.
+
+// Need a funky IIFE to create the animation data object with proper typing.
+const animationData = (<T extends Record<string, AnimationParams>>(data: T) => data)({
+    Idle: {
+        base: "Hover",
+        animConfig: {
+            frameRate: 12,
+            repeat: -1,
+        },
+        framesTemplate: [
+            { frame: 0 }, { frame: 1 }, { frame: 2 }, { frame: 3 },
+            { frame: 4 }, { frame: 5 }, { frame: 6 }, { frame: 7 },
+        ]
+    },
+    Move: {
+        base: "Fly",
+        animConfig: {
+            frameRate: 12,
+            repeat: -1,
+        },
+        framesTemplate: [
+            { frame: 0 }, { frame: 1 }, { frame: 2 }, { frame: 3 },
+            { frame: 4 }, { frame: 5 }, { frame: 6 }, { frame: 7 },
+        ]
+    },
+    Dash: {
+        base: "Ram",
+        animConfig: {
+            frameRate: 20,
+            repeat: 0,
+        },
+        framesTemplate: [
+            { frame: 0 }, { frame: 1 }, { frame: 2 }, { frame: 3, duration: 400 },
+            { frame: 4 }, { frame: 5 }, { frame: 6 }, { frame: 7 },
+        ]
+    },
+    BreathAttack:{
+        base: "Breathe",
+        animConfig : {
+            frameRate: 6,
+            repeat: -1,
+        },
+        framesTemplate: [ {frame: 4}, {frame: 5}, {frame: 6}, ]
+    },
+    WingBlast: {
+        base: "Sting",
+        animConfig: {
+            repeat: 0,
+        },
+        framesTemplate: [
+            { frame: 6, duration: 40 },
+            { frame: 5, duration: 40 },
+            { frame: 4, duration: 40 },
+            { frame: 3, duration: 40 },
+            { frame: 2, duration: 40 },
+            { frame: 1, duration: 40 },
+            { frame: 0, duration: 40 },
+            { frame: 1, duration: 100 },
+            { frame: 2, duration: 70 },
+            { frame: 3, duration: 0 },
+        ]
+    },
+    Slam: {
+        base: "Die",
+        animConfig: {
+            frameRate: 10,
+            repeat: 0,
+        },
+        framesTemplate: [
+            { frame: 0 }, { frame: 1 }, { frame: 2 }, { frame: 3 },
+            { frame: 4 }, { frame: 5 }, { frame: 6 }, { frame: 7 },
+        ]
+    },
+
+} as const);

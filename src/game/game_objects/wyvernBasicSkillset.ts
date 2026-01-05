@@ -1,7 +1,7 @@
 import { StateMachine } from '../../util/stateMachine';
 import { Communicator } from '../../util/communicator';
 import { Heading, HeadingVectors } from '../world/parameters';
-import { WyvernAnimation } from './wyvernAnimationData';
+import { WyvernAnimation } from './wyvernAnimationDriver';
 
 type WyvernState = 'Idle' | 'Move' | 'Dash' | 'WingBlast' | 'BreathAttack' | 'InterruptBreath' | 'Done';
 
@@ -51,19 +51,21 @@ export class WyvernBasicSkillset {
     constructor() {
 
         this.fsm = new StateMachine<WyvernState>('Idle')
-            .allow('Idle', 'BreathAttack')
             .allow('Idle', 'Dash')
+            .allow('Idle', 'BreathAttack')
             .allow('Idle', 'WingBlast')
             .allow('Idle', 'Move')
 
-            .allow('Move', 'Idle')
             .allow('Move', 'Dash')
             .allow('Move', 'BreathAttack')
             .allow('Move', 'WingBlast')
+            .allow('Move', 'Idle')
 
             .allow('Dash', 'Done')
             .allow('WingBlast', 'Done')
             .allow('Done', 'Idle')
+
+            .allow('BreathAttack', 'Dash')
             .allow('BreathAttack', 'InterruptBreath')
             .allow('InterruptBreath', 'Idle')
 
