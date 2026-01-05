@@ -3,14 +3,15 @@ import { Communicator } from '../../util/communicator';
 import { Heading, HeadingVectors } from '../world/parameters';
 import { WyvernAnimation } from './wyvernAnimationDriver';
 
-type WyvernState = 'Idle' | 'Move' | 'Dash' | 'WingBlast' | 'BreathAttack' | 'InterruptBreath' | 'Done';
+type WyvernState = 'Idle' | 'Move' | 'Dash' | 'WingBlast' | 'BreathAttack';
 
-export type Controls = {
-    steer: (heading: Heading | undefined) => void,
-    dash: () => void,
-    wingBlast: () => void,
-    breath: () => void,
-    interruptBreath: () => void,
+class Controls {
+    constructor(
+        public steer: Heading | undefined = undefined,
+        public dash: boolean = false,
+        public wingBlast: boolean = false,
+        public breathe: boolean = false,
+    ) {}
 }
 
 export class WyvernBasicSkillset {
@@ -26,14 +27,11 @@ export class WyvernBasicSkillset {
         ) => void ) => void,
     }>();
 
-    public listenTo(bridge: Communicator<Controls>) {
-        return bridge
-            .when('steer', (heading) => this.aim = heading)
-            .when('breath', () => this.fsm.send('BreathAttack'))
-            .when('interruptBreath', () => this.fsm.send('InterruptBreath'))
-            .when('dash', () => this.fsm.send('Dash'))
-            .when('wingBlast', () => this.fsm.send('WingBlast'))
-        ;
+    private controlBridge = new Controls();
+
+    public takeControls() {
+        this.controlBridge = new Controls();
+        return this.controlBridge;
     }
 
     public startTick(scene: Phaser.Scene) {
@@ -45,12 +43,11 @@ export class WyvernBasicSkillset {
     public setTimeRate(rate: number) { this.timeRate = Math.max(rate, 0.1); } // To prevent divide-by-zero.
     private ms(ms: number) { return ms / this.timeRate; }
 
-    private aim: Heading | undefined = undefined;
     private fsm: StateMachine<WyvernState>;
 
     constructor() {
 
-        this.fsm = new StateMachine<WyvernState>('Idle')
+        this.fsm = new StateMachine<WyvernState>('Idle') /*
             .allow('Idle', 'Dash')
             .allow('Idle', 'BreathAttack')
             .allow('Idle', 'WingBlast')
@@ -67,28 +64,30 @@ export class WyvernBasicSkillset {
 
             .allow('BreathAttack', 'Dash')
             .allow('BreathAttack', 'InterruptBreath')
-            .allow('InterruptBreath', 'Idle')
+            .allow('InterruptBreath', 'Idle') */
 
             .when('enter_Idle', () => {
                 this.comms.send('setAnimation', 'Idle');
                 this.comms.send('stop');
             })
             .when('tick_Idle', () => {
-                if (this.aim) {
-                    this.fsm.send('Move');
-                }
+                if (this.controlBridge.dash) { this.fsm.go('Dash'); }
+                else if (this.controlBridge.wingBlast) { this.fsm.go('WingBlast'); }
+                else if (this.controlBridge.breathe) { this.fsm.go('BreathAttack'); }
+                else if (this.controlBridge.steer) { this.fsm.go('Move'); }
             })
                           
             .when('enter_Move', () => this.comms.send('setAnimation', 'Move'))
             .when('leave_Move', () => this.comms.send('stop'))
             .when('tick_Move', () => {
-                if (this.aim) {
-                    this.comms.send('setHeading', this.aim);
-                    this.comms.send('go', HeadingVectors[this.aim], 1.0);
+                if (this.controlBridge.dash) { this.fsm.go('Dash'); }
+                else if (this.controlBridge.wingBlast) { this.fsm.go('WingBlast'); }
+                else if (this.controlBridge.breathe) { this.fsm.go('BreathAttack'); }
+                else if (this.controlBridge.steer) {
+                    this.comms.send('setHeading', this.controlBridge.steer);
+                    this.comms.send('go', HeadingVectors[this.controlBridge.steer], 1.0);
                 }
-                else {
-                    this.fsm.send('Idle');
-                }
+                else { this.fsm.go('Idle'); }
             })
             
             .when('enter_Dash', () => {
@@ -107,7 +106,7 @@ export class WyvernBasicSkillset {
                             this.comms.send('go', headingVector, 6.0);
                         }
                     });
-                    sprite.scene.time.delayedCall(500, () => this.fsm.send('Done'), [], this);
+                    sprite.scene.time.delayedCall(500, () => this.fsm.go('Idle'), [], this);
                 });
             })
             .when('enter_WingBlast', () => {
@@ -174,7 +173,7 @@ export class WyvernBasicSkillset {
                     sprite.scene.time.delayedCall(this.ms(500), () => {                    
                         shockwave.destroy();
                         blast.destroy();
-                        this.fsm.send('Done');
+                        this.fsm.go('Idle');
                     });
                 });
             })
@@ -218,8 +217,10 @@ export class WyvernBasicSkillset {
                     });
                 });
             })
-            .when('enter_InterruptBreath', () => this.fsm.send('Idle'))
-            .when('enter_Done', () => this.fsm.send('Idle'))
+            .when('tick_BreathAttack', () => {
+                if (this.controlBridge.dash) { this.fsm.go('Dash'); }
+                else if (!this.controlBridge.breathe) { this.fsm.go('Idle'); }
+            })
         ;
 
     }

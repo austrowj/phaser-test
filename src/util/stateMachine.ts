@@ -27,6 +27,12 @@ export class StateMachine<S extends string> {
 
     public send(event: S) { this.ping.emit(event); }
 
+    public go(to: S) {
+        this.pong.emit(`leave_${this.state}`);
+        this.state = to;
+        this.pong.emit(`enter_${this.state}`);
+    }
+
     public startTick(scene: Phaser.Scene) {
         scene.events.on('update', () => { this.pong.emit(`tick_${this.state}`); });
     }

@@ -1,10 +1,9 @@
 import { Scene } from 'phaser';
 import { createInputControls } from '../game_objects/wyvernInputController';
-import { Controls, WyvernBasicSkillset } from '../game_objects/wyvernBasicSkillset';
+import { WyvernBasicSkillset } from '../game_objects/wyvernBasicSkillset';
 import { WyvernAnimationDriver } from '../game_objects/wyvernAnimationDriver';
 import { createWyvern, Wyvern } from '../game_objects/wyvern';
 import { Dungeon } from '../game_objects/dungeon';
-import { Communicator } from '../../util/communicator';
 
 export class Game extends Scene
 {
@@ -38,7 +37,6 @@ export class Game extends Scene
 
         new Dungeon(this, 512, 300);
 
-        this.controlBridge = createInputControls(this.input.keyboard!);
         const wyverns = [
             createWyvern(
                 this.physics.add.sprite(512, 300, ''), // Sprite key will be overridden by animation driver.
@@ -81,17 +79,16 @@ export class Game extends Scene
         });
     }
 
-    private controlBridge: Communicator<Controls>;
     private player: Wyvern;
 
     private choosePlayer(obj: Wyvern) {
         if (this.player) {
+            this.player.skillset.takeControls(); // Release previous controls.
             this.player.sprite.postFX.clear();
         }
-        this.controlBridge.removeListeners();
         this.msg_text.removeFromDisplayList();
 
-        obj.skillset.listenTo(this.controlBridge);
+        createInputControls(this.input.keyboard!, obj.skillset);
         obj.sprite.postFX.addGlow(parseInt('#ffffff'.substring(1), 16), 2, 0.5, false, .1, 4);
         this.camera.startFollow(obj.sprite);
         this.player = obj;
