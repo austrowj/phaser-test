@@ -18,7 +18,11 @@ jobs:
       - uses: oven-sh/setup-bun@v2  # Official setup-bun action (https://bun.com/docs/guides/runtime/cicd)
 
       - run: bun install
-      - run: bun run build
+      - name: Build with timestamp
+        run: bun run build
+        env:
+          VITE_BUILD_DATE: ${{ github.event.head_commit.timestamp }}
+          VITE_BUILD_TIME: ${{ github.run_number }}
 
       - uses: actions/upload-pages-artifact@v3
         with:
