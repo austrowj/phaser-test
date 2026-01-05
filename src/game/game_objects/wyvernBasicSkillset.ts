@@ -50,8 +50,6 @@ export class WyvernBasicSkillset {
 
     constructor() {
 
-        var flames: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
-
         this.fsm = new StateMachine<WyvernState>('Idle')
             .allow('Idle', 'BreathAttack')
             .allow('Idle', 'Dash')
@@ -191,7 +189,7 @@ export class WyvernBasicSkillset {
                     const base = Phaser.Math.RadToDeg(Math.atan2(headingVector.y, headingVector.x));
                     const cone = {min: base - 20, max: base + 20};
 
-                    flames = sprite.scene.add.particles(breathPoint.x, breathPoint.y, 'flares', {
+                    const flames = sprite.scene.add.particles(breathPoint.x, breathPoint.y, 'flares', {
                         frame: 'white',
                         color: [0xfacc22, 0xf89800, 0xf83600, 0x9f0404],
                         colorEase: 'quad.out',
@@ -209,14 +207,14 @@ export class WyvernBasicSkillset {
                         //duration: 1000,
                     });
                     flames.setDepth(1);
+
+                    this.fsm.once('leave_BreathAttack', () => {
+                        flames.stop();
+                        sprite.scene.time.delayedCall(1000, () => {
+                            flames.destroy();
+                        });
+                    });
                 });
-            })
-            .when('leave_BreathAttack', () => {
-                if (flames) {
-                    flames.stop();
-                    flames.destroy();
-                    flames = null;
-                }
             })
             .when('enter_InterruptBreath', () => this.fsm.send('Idle'))
             .when('enter_Done', () => this.fsm.send('Idle'))

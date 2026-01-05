@@ -20,6 +20,11 @@ export class StateMachine<S extends string> {
         return this;
     }
 
+    public once<E extends `${'enter' | 'leave' | 'tick'}_${S}`>(event: E, callback: () => void) {
+        this.pong.once(event, callback);
+        return this;
+    }
+
     public send(event: S) { this.ping.emit(event); }
 
     public startTick(scene: Phaser.Scene) {
