@@ -3,14 +3,15 @@ import { Communicator } from '../../util/communicator';
 import { Heading, HeadingVectors } from '../world/parameters';
 import { WyvernAnimation } from './wyvernAnimationDriver';
 
-type WyvernState = 'Idle' | 'Move' | 'Dash' | 'WingBlast' | 'BreathAttack' | 'InterruptBreath' | 'Done';
+type WyvernState = 'Idle' | 'Move' | 'Dash' | 'WingBlast' | 'BreathAttack';
 
-export type Controls = {
-    steer: (heading: Heading | undefined) => void,
-    dash: () => void,
-    wingBlast: () => void,
-    breath: () => void,
-    interruptBreath: () => void,
+class Controls {
+    constructor(
+        public steer: Heading | undefined = undefined,
+        public dash: boolean = false,
+        public wingBlast: boolean = false,
+        public breathe: boolean = false,
+    ) {}
 }
 
 export class WyvernBasicSkillset {
@@ -22,18 +23,16 @@ export class WyvernBasicSkillset {
         setAnimation: (animation: WyvernAnimation) => void,
         useSkill: (callback: (
             sprite: Phaser.GameObjects.Sprite,
+            effectsGroup: Phaser.Physics.Arcade.Group,
             heading: Heading,
         ) => void ) => void,
     }>();
 
-    public listenTo(bridge: Communicator<Controls>) {
-        return bridge
-            .when('steer', (heading) => this.aim = heading)
-            .when('breath', () => this.fsm.send('BreathAttack'))
-            .when('interruptBreath', () => this.fsm.send('InterruptBreath'))
-            .when('dash', () => this.fsm.send('Dash'))
-            .when('wingBlast', () => this.fsm.send('WingBlast'))
-        ;
+    private controlBridge = new Controls();
+
+    public takeControls() {
+        this.controlBridge = new Controls();
+        return this.controlBridge;
     }
 
     public startTick(scene: Phaser.Scene) {
@@ -45,55 +44,39 @@ export class WyvernBasicSkillset {
     public setTimeRate(rate: number) { this.timeRate = Math.max(rate, 0.1); } // To prevent divide-by-zero.
     private ms(ms: number) { return ms / this.timeRate; }
 
-    private aim: Heading | undefined = undefined;
     private fsm: StateMachine<WyvernState>;
 
     constructor() {
 
-        var flames: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
-
         this.fsm = new StateMachine<WyvernState>('Idle')
-            .allow('Idle', 'BreathAttack')
-            .allow('Idle', 'Dash')
-            .allow('Idle', 'WingBlast')
-            .allow('Idle', 'Move')
-
-            .allow('Move', 'Idle')
-            .allow('Move', 'Dash')
-            .allow('Move', 'BreathAttack')
-            .allow('Move', 'WingBlast')
-
-            .allow('Dash', 'Done')
-            .allow('WingBlast', 'Done')
-            .allow('Done', 'Idle')
-            .allow('BreathAttack', 'InterruptBreath')
-            .allow('InterruptBreath', 'Idle')
 
             .when('enter_Idle', () => {
                 this.comms.send('setAnimation', 'Idle');
                 this.comms.send('stop');
             })
             .when('tick_Idle', () => {
-                if (this.aim) {
-                    this.fsm.send('Move');
-                }
+                if (this.controlBridge.dash) { this.fsm.go('Dash'); }
+                else if (this.controlBridge.wingBlast) { this.fsm.go('WingBlast'); }
+                else if (this.controlBridge.breathe) { this.fsm.go('BreathAttack'); }
+                else if (this.controlBridge.steer) { this.fsm.go('Move'); }
             })
                           
             .when('enter_Move', () => this.comms.send('setAnimation', 'Move'))
             .when('leave_Move', () => this.comms.send('stop'))
             .when('tick_Move', () => {
-                if (this.aim) {
-                    this.comms.send('setHeading', this.aim);
-                    this.comms.send('go', HeadingVectors[this.aim], 1.0);
+                if (this.controlBridge.dash) { this.fsm.go('Dash'); }
+                else if (this.controlBridge.wingBlast) { this.fsm.go('WingBlast'); }
+                else if (this.controlBridge.breathe) { this.fsm.go('BreathAttack'); }
+                else if (this.controlBridge.steer) {
+                    this.comms.send('setHeading', this.controlBridge.steer);
+                    this.comms.send('go', HeadingVectors[this.controlBridge.steer], 1.0);
                 }
-                else {
-                    this.fsm.send('Idle');
-                }
+                else { this.fsm.go('Idle'); }
             })
             
             .when('enter_Dash', () => {
                 this.comms.send('setAnimation', 'Dash');
-                this.comms.send('useSkill', (sprite, heading) => {
+                this.comms.send('useSkill', (sprite, _, heading) => {
                     const headingVector = HeadingVectors[heading];
                     sprite.scene.tweens.add({
                         targets: sprite,
@@ -107,14 +90,12 @@ export class WyvernBasicSkillset {
                             this.comms.send('go', headingVector, 6.0);
                         }
                     });
-                    sprite.scene.time.delayedCall(500, () => this.fsm.send('Done'), [], this);
+                    sprite.scene.time.delayedCall(500, () => this.fsm.go('Idle'), [], this);
                 });
             })
             .when('enter_WingBlast', () => {
                 this.comms.send('setAnimation', 'WingBlast');
-                this.comms.send('useSkill', (sprite, heading) => {
-
-                    const headingVector = HeadingVectors[heading];
+                this.comms.send('useSkill', (sprite, effectsGroup, _) => {
 
                     const shockwave = sprite.scene.add.particles(sprite.x, sprite.y, 'flares', {
                         frame: 'white',
@@ -142,45 +123,25 @@ export class WyvernBasicSkillset {
                         });
                     }
 
-                    const breathPoint = {
-                        x: sprite.x + headingVector.x * 50 * sprite.scale,
-                        y: sprite.y + headingVector.y * 50 * sprite.scale
-                    };
-                    const base = Phaser.Math.RadToDeg(Math.atan2(headingVector.y, headingVector.x));
-                    const cone = {min: base - 20, max: base + 20, steps: 40};
+                    const blast = effectsGroup.create(sprite.x, sprite.y, '');
+                    blast.setOrigin(0.5);
+                    blast.setScale(0); // No collision at first.
+                    blast.body.setCircle(20, -4, -4); // idk why the alignment is so weird
+                    blast.body.setMass(100000); // Very heavy so it doesn't get moved by collisions.
+                    blast.setAlpha(0);
 
-                    const blast = sprite.scene.add.particles(breathPoint.x, breathPoint.y, 'flares', {
-                        frame: 'white',
-                        color: [0],
-                        lifespan: 300 * sprite.scale,
-                        scale: {
-                            start: 0.2 * sprite.scale,
-                            end: 0.0 * sprite.scale,
-                            ease: 'Cubic.out'
-                        },
-                        alpha: {
-                            start: 0.5,
-                            end: 0.0,
-                            ease: 'Cubic.out'
-                        },
-                        speed: 1200,
-                        angle: cone,
-                        blendMode: 'NORMAL',
-                        emitting: false,
-                    });
-                    //sprite.scene.time.delayedCall(this.ms(200), () => blast.start());
-                    //sprite.scene.time.delayedCall(this.ms(400), () => blast.stop());
+                    sprite.scene.time.delayedCall(this.ms(200), () => blast.setScale(8.0 * sprite.scale));
 
                     sprite.scene.time.delayedCall(this.ms(500), () => {                    
                         shockwave.destroy();
                         blast.destroy();
-                        this.fsm.send('Done');
+                        this.fsm.go('Idle');
                     });
                 });
             })
             .when('enter_BreathAttack', () => {
                 this.comms.send('setAnimation', 'BreathAttack');
-                this.comms.send('useSkill', (sprite, heading) => {
+                this.comms.send('useSkill', (sprite, _, heading) => {
 
                     const headingVector = HeadingVectors[heading];
 
@@ -191,7 +152,7 @@ export class WyvernBasicSkillset {
                     const base = Phaser.Math.RadToDeg(Math.atan2(headingVector.y, headingVector.x));
                     const cone = {min: base - 20, max: base + 20};
 
-                    flames = sprite.scene.add.particles(breathPoint.x, breathPoint.y, 'flares', {
+                    const flames = sprite.scene.add.particles(breathPoint.x, breathPoint.y, 'flares', {
                         frame: 'white',
                         color: [0xfacc22, 0xf89800, 0xf83600, 0x9f0404],
                         colorEase: 'quad.out',
@@ -209,17 +170,19 @@ export class WyvernBasicSkillset {
                         //duration: 1000,
                     });
                     flames.setDepth(1);
+
+                    this.fsm.once('leave_BreathAttack', () => {
+                        flames.stop();
+                        sprite.scene.time.delayedCall(1000, () => {
+                            flames.destroy();
+                        });
+                    });
                 });
             })
-            .when('leave_BreathAttack', () => {
-                if (flames) {
-                    flames.stop();
-                    flames.destroy();
-                    flames = null;
-                }
+            .when('tick_BreathAttack', () => {
+                if (this.controlBridge.dash) { this.fsm.go('Dash'); }
+                else if (!this.controlBridge.breathe) { this.fsm.go('Idle'); }
             })
-            .when('enter_InterruptBreath', () => this.fsm.send('Idle'))
-            .when('enter_Done', () => this.fsm.send('Idle'))
         ;
 
     }

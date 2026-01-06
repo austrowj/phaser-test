@@ -1,5 +1,5 @@
 import { Scene } from 'phaser';
-import { TILE_WIDTH, TILE_HEIGHT } from '../game_objects/dungeon';
+import { load as loadDungeon } from '../game_objects/dungeon';
 import { load as loadWyverns } from '../game_objects/wyvernAnimationDriver';
 
 export class Preloader extends Scene
@@ -37,20 +37,15 @@ export class Preloader extends Scene
         this.load.image('logo', 'logo.png');
         
         loadWyverns(this);
+        loadDungeon(this);
 
-        this.load.spritesheet(
-            'floor_tiles',
-            'denzi_iso/img/96x96-32x32_dungeon_Denzi071009-1.PNG',
-            { frameWidth: TILE_WIDTH, frameHeight: TILE_HEIGHT }
-        );
+        this.load.atlas('flares', 'effects/flares.png', 'effects/flares.json');
 
         this.load.spritesheet(
             'mouse_cursor',
             'denzi_iso/img/32x32_mouse_pointer_Denzi040418.gif',
             { frameWidth: 32, frameHeight: 32 }
         );
-
-        this.load.atlas('flares', 'effects/flares.png', 'effects/flares.json');
     }
 
     create ()

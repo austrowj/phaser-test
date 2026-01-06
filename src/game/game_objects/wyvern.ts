@@ -1,6 +1,5 @@
 import { WyvernAnimationDriver } from "./wyvernAnimationDriver";
-import { WyvernBasicSkillset, Controls } from "./wyvernBasicSkillset";
-import { Communicator } from "../../util/communicator";
+import { WyvernBasicSkillset } from "./wyvernBasicSkillset";
 
 const sizeConfig = {
     'small':  { scale: 0.25, rate: 1.5, topSpeed: 300 },
@@ -14,8 +13,8 @@ export function createWyvern(
     sprite: Phaser.GameObjects.Sprite,
     driver: WyvernAnimationDriver,
     skillset: WyvernBasicSkillset,
+    effectsGroup: Phaser.Physics.Arcade.Group,
     size: keyof typeof sizeConfig = 'medium',
-    controlBridge?: Communicator<Controls>
 ) {
     // Make sure physics are configured.
     const body = sprite.body as Phaser.Physics.Arcade.Body;
@@ -38,13 +37,11 @@ export function createWyvern(
             vector.x * scale * sizeConfig[size].topSpeed,
             vector.y * scale * sizeConfig[size].topSpeed
         ))
-        .when('useSkill', (callback) => callback(sprite, driver.getCurrentHeading()));
-    
-    if (controlBridge) { skillset.listenTo(controlBridge); }
+        .when('useSkill', (callback) => callback(sprite, effectsGroup, driver.getCurrentHeading()));
     
     // Initialize animation state.
     driver.setAnimation('Idle');
     skillset.startTick(sprite.scene);
 
-    return { sprite, driver, skillset, size, controlBridge };
+    return { sprite, driver, skillset, size };
 }

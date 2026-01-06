@@ -1,11 +1,9 @@
-import * as z from 'zod';
 import { Communicator } from '../../util/communicator';
 import { Heading } from '../world/parameters';
 
 // Designed for external use and/or reference.
-
-export type WyvernAnimation = typeof WyvernAnimations[number];
-const WyvernAnimations = ['Idle', 'Move', 'Dash', 'BreathAttack', 'WingBlast'] as const;
+export type WyvernAnimation = keyof typeof animationData;
+export function load(scene: Phaser.Scene) { loadInternal(scene); }
 
 export class WyvernAnimationDriver {
 
@@ -40,15 +38,9 @@ export class WyvernAnimationDriver {
     }
 }
 
-// Internal convention
+// Internal definitions below.
 
-type AnimationKey = `${Variant}_${WyvernAnimation}_${Heading}`;
-
-// Data-driven definitions.
-
-const Variants = ['earth', 'air', 'fire', 'water'] as const;
-
-const HeadingIndexes: Record<Heading, number> = {
+const HeadingIndexes = {
     W:  0,
     NW: 1,
     N:  2,
@@ -57,7 +49,13 @@ const HeadingIndexes: Record<Heading, number> = {
     SE: 5,
     S:  6,
     SW: 7,
-} as const;
+} as const satisfies Record<Heading, number>;
+type WyvernFrameIndex = typeof HeadingIndexes[keyof typeof HeadingIndexes];
+
+const Variants = ['earth', 'air', 'fire', 'water'] as const;
+type Variant = typeof Variants[number];
+
+type AnimationKey = `${Variant}_${WyvernAnimation}_${Heading}`;
 
 const BaseBehaviors = {
     Hover:   { index: 0 },
@@ -68,60 +66,30 @@ const BaseBehaviors = {
     Hit:     { index: 5 },
     Die:     { index: 6 },
 } as const;
-
-// Type setup for animation JSON validation.
-
-type Variant = typeof Variants[number];
 type BaseBehavior = keyof typeof BaseBehaviors;
-type WyvernFrameIndex = typeof HeadingIndexes[keyof typeof HeadingIndexes];
 
-const WyvernAnimationDefinition = z.strictObject({
-    base: z.union(Object.keys(BaseBehaviors).map(k => z.literal(k as BaseBehavior))),
-    animConfig: z.strictObject({
-        frameRate: z.number().optional(),
-        duration: z.number().optional(),
-        skipMissedFrames: z.boolean().optional(),
-        delay: z.number().optional(),
-        repeat: z.number().optional(),
-        repeatDelay: z.number().optional(),
-        yoyo: z.boolean().optional(),
-        showBeforeDelay: z.boolean().optional(),
-        showOnStart: z.boolean().optional(),
-        hideOnComplete: z.boolean().optional(),
-        randomFrames: z.boolean().optional()
-    }),
-    framesTemplate: z.array(z.strictObject({
-        frame: z.union(Object.values(HeadingIndexes).map((index) => z.literal(index))),
-        duration: z.number().optional(),
-        visible: z.boolean().optional()
-    }))
-});
-
-const WyvernAnimationDefinitions = z.strictObject(
-    Object.fromEntries(WyvernAnimations.map(anim => [anim, WyvernAnimationDefinition]))
-);
-
-function variantSpriteKey(variant: Variant): string {
-    return 'wyvern_' + variant;
+type AnimationParams = {
+    base: BaseBehavior,
+    animConfig: Phaser.Types.Animations.Animation & {
+        frames?: never,
+        defaultTextureKey?: never,
+        key?: never,
+    },
+    framesTemplate: (Phaser.Types.Animations.AnimationFrame & {
+        key?: never,
+        frame: WyvernFrameIndex
+    })[]
 }
 
-/** This looks super cursed but it should work.
-    The idea is that you can pass any type of animation config and frame data,
-    then this will generate the configs for all 8 heading variants.
-*/
 function createAnimationConfigs(
     key: string,
     variant: Variant,
-    params: {
-        base: BaseBehavior,
-        animConfig: Omit<Phaser.Types.Animations.Animation, 'frames' | 'defaultTextureKey' | 'key'>,
-        framesTemplate: (Omit<Phaser.Types.Animations.AnimationFrame, 'key'> & {frame: WyvernFrameIndex})[]
-    }
+    params: AnimationParams
 ): Phaser.Types.Animations.Animation[] {
 
     return Object.entries(HeadingIndexes).map(([heading, index]) => ({
         ...params.animConfig,
-        defaultTextureKey: variantSpriteKey(variant),
+        defaultTextureKey: "wyvern_" + variant,
         frames: params.framesTemplate.map(frame => ({
             ...frame,
             frame:
@@ -135,24 +103,22 @@ function createAnimationConfigs(
 
 // Loader function to be called in a Phaser scene's preload().
 
-export function load(scene: Phaser.Scene) {
+function loadInternal(scene: Phaser.Scene) {
 
     Variants.forEach(variant => {
-        scene.load.spritesheet(
-            'wyvern_' + variant,
-            'character/wyvern_' + variant + '.png',
-            { frameWidth: 256, frameHeight: 256 }
-        );
+        if (variant !== 'earth') { // Skip because we're not using it for testing.
+            scene.load.spritesheet(
+                'wyvern_' + variant,
+                'character/wyvern_' + variant + '.png',
+                { frameWidth: 256, frameHeight: 256 }
+            );
+        }
     });
 
-    scene.load.json('wyvernAnimations', '../data/wyvernAnimations.json');
     scene.load.on('complete', () => { // Eagerly register all the animations for every variant.
         console.log("Wyvern animations load complete, creating animations...");
         try {
-            const rawData = scene.cache.json.get('wyvernAnimations');
-            const parsedDefs = WyvernAnimationDefinitions.parse(rawData);
-
-            Object.entries(parsedDefs).forEach(([key, args]) => {
+            Object.entries(animationData).forEach(([key, args]) => {
                 Object.entries(Variants).forEach(([_, variant]) => {
                     const newAnims = createAnimationConfigs(variant + '_' + key, variant, args);
                     newAnims.forEach(config => { scene.anims.create(config); });
@@ -164,3 +130,80 @@ export function load(scene: Phaser.Scene) {
         console.log("Wyvern animations created.");
     });
 }
+
+// The actual animation data.
+
+// Need a funky IIFE to create the animation data object with proper typing.
+const animationData = (<T extends Record<string, AnimationParams>>(data: T) => data)({
+    Idle: {
+        base: "Hover",
+        animConfig: {
+            frameRate: 12,
+            repeat: -1,
+        },
+        framesTemplate: [
+            { frame: 0 }, { frame: 1 }, { frame: 2 }, { frame: 3 },
+            { frame: 4 }, { frame: 5 }, { frame: 6 }, { frame: 7 },
+        ]
+    },
+    Move: {
+        base: "Fly",
+        animConfig: {
+            frameRate: 12,
+            repeat: -1,
+        },
+        framesTemplate: [
+            { frame: 0 }, { frame: 1 }, { frame: 2 }, { frame: 3 },
+            { frame: 4 }, { frame: 5 }, { frame: 6 }, { frame: 7 },
+        ]
+    },
+    Dash: {
+        base: "Ram",
+        animConfig: {
+            frameRate: 20,
+            repeat: 0,
+        },
+        framesTemplate: [
+            { frame: 0 }, { frame: 1 }, { frame: 2 }, { frame: 3, duration: 400 },
+            { frame: 4 }, { frame: 5 }, { frame: 6 }, { frame: 7 },
+        ]
+    },
+    BreathAttack:{
+        base: "Breathe",
+        animConfig : {
+            frameRate: 6,
+            repeat: -1,
+        },
+        framesTemplate: [ {frame: 4}, {frame: 5}, {frame: 6}, ]
+    },
+    WingBlast: {
+        base: "Sting",
+        animConfig: {
+            repeat: 0,
+        },
+        framesTemplate: [
+            { frame: 6, duration: 40 },
+            { frame: 5, duration: 40 },
+            { frame: 4, duration: 40 },
+            { frame: 3, duration: 40 },
+            { frame: 2, duration: 40 },
+            { frame: 1, duration: 40 },
+            { frame: 0, duration: 40 },
+            { frame: 1, duration: 100 },
+            { frame: 2, duration: 70 },
+            { frame: 3, duration: 0 },
+        ]
+    },
+    Slam: {
+        base: "Die",
+        animConfig: {
+            frameRate: 10,
+            repeat: 0,
+        },
+        framesTemplate: [
+            { frame: 0 }, { frame: 1 }, { frame: 2 }, { frame: 3 },
+            { frame: 4 }, { frame: 5 }, { frame: 6 }, { frame: 7 },
+        ]
+    },
+
+} as const);
