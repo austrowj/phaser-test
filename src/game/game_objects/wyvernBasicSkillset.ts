@@ -23,6 +23,7 @@ export class WyvernBasicSkillset {
         setAnimation: (animation: WyvernAnimation) => void,
         useSkill: (callback: (
             sprite: Phaser.GameObjects.Sprite,
+            effectsGroup: Phaser.Physics.Arcade.Group,
             heading: Heading,
         ) => void ) => void,
     }>();
@@ -47,24 +48,7 @@ export class WyvernBasicSkillset {
 
     constructor() {
 
-        this.fsm = new StateMachine<WyvernState>('Idle') /*
-            .allow('Idle', 'Dash')
-            .allow('Idle', 'BreathAttack')
-            .allow('Idle', 'WingBlast')
-            .allow('Idle', 'Move')
-
-            .allow('Move', 'Dash')
-            .allow('Move', 'BreathAttack')
-            .allow('Move', 'WingBlast')
-            .allow('Move', 'Idle')
-
-            .allow('Dash', 'Done')
-            .allow('WingBlast', 'Done')
-            .allow('Done', 'Idle')
-
-            .allow('BreathAttack', 'Dash')
-            .allow('BreathAttack', 'InterruptBreath')
-            .allow('InterruptBreath', 'Idle') */
+        this.fsm = new StateMachine<WyvernState>('Idle')
 
             .when('enter_Idle', () => {
                 this.comms.send('setAnimation', 'Idle');
@@ -92,7 +76,7 @@ export class WyvernBasicSkillset {
             
             .when('enter_Dash', () => {
                 this.comms.send('setAnimation', 'Dash');
-                this.comms.send('useSkill', (sprite, heading) => {
+                this.comms.send('useSkill', (sprite, _, heading) => {
                     const headingVector = HeadingVectors[heading];
                     sprite.scene.tweens.add({
                         targets: sprite,
@@ -111,9 +95,7 @@ export class WyvernBasicSkillset {
             })
             .when('enter_WingBlast', () => {
                 this.comms.send('setAnimation', 'WingBlast');
-                this.comms.send('useSkill', (sprite, heading) => {
-
-                    const headingVector = HeadingVectors[heading];
+                this.comms.send('useSkill', (sprite, effectsGroup, _) => {
 
                     const shockwave = sprite.scene.add.particles(sprite.x, sprite.y, 'flares', {
                         frame: 'white',
@@ -141,34 +123,14 @@ export class WyvernBasicSkillset {
                         });
                     }
 
-                    const breathPoint = {
-                        x: sprite.x + headingVector.x * 50 * sprite.scale,
-                        y: sprite.y + headingVector.y * 50 * sprite.scale
-                    };
-                    const base = Phaser.Math.RadToDeg(Math.atan2(headingVector.y, headingVector.x));
-                    const cone = {min: base - 20, max: base + 20, steps: 40};
+                    const blast = effectsGroup.create(sprite.x, sprite.y, '');
+                    blast.setOrigin(0.5);
+                    blast.setScale(0); // No collision at first.
+                    blast.body.setCircle(20, -4, -4); // idk why the alignment is so weird
+                    blast.body.setMass(100000); // Very heavy so it doesn't get moved by collisions.
+                    blast.setAlpha(0);
 
-                    const blast = sprite.scene.add.particles(breathPoint.x, breathPoint.y, 'flares', {
-                        frame: 'white',
-                        color: [0],
-                        lifespan: 300 * sprite.scale,
-                        scale: {
-                            start: 0.2 * sprite.scale,
-                            end: 0.0 * sprite.scale,
-                            ease: 'Cubic.out'
-                        },
-                        alpha: {
-                            start: 0.5,
-                            end: 0.0,
-                            ease: 'Cubic.out'
-                        },
-                        speed: 1200,
-                        angle: cone,
-                        blendMode: 'NORMAL',
-                        emitting: false,
-                    });
-                    //sprite.scene.time.delayedCall(this.ms(200), () => blast.start());
-                    //sprite.scene.time.delayedCall(this.ms(400), () => blast.stop());
+                    sprite.scene.time.delayedCall(this.ms(200), () => blast.setScale(8.0 * sprite.scale));
 
                     sprite.scene.time.delayedCall(this.ms(500), () => {                    
                         shockwave.destroy();
@@ -179,7 +141,7 @@ export class WyvernBasicSkillset {
             })
             .when('enter_BreathAttack', () => {
                 this.comms.send('setAnimation', 'BreathAttack');
-                this.comms.send('useSkill', (sprite, heading) => {
+                this.comms.send('useSkill', (sprite, _, heading) => {
 
                     const headingVector = HeadingVectors[heading];
 

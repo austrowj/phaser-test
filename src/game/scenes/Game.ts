@@ -11,6 +11,8 @@ export class Game extends Scene
     //background: Phaser.GameObjects.Image;
     msg_text : Phaser.GameObjects.Text;
 
+    private dungeon: Dungeon;
+
     constructor ()
     {
         super('Game');
@@ -35,25 +37,31 @@ export class Game extends Scene
         this.msg_text.setOrigin(0.5);
         this.msg_text.setDepth(10);
 
-        new Dungeon(this, 512, 300);
+        this.dungeon = new Dungeon(this, 1024, 0);
+
+        const playerAttacksGroup = this.physics.add.group();
+        this.physics.add.collider(playerAttacksGroup, this.dungeon.monsters, (attackSprite, monsterSprite) => { });
 
         const wyverns = [
             createWyvern(
                 this.physics.add.sprite(512, 300, ''), // Sprite key will be overridden by animation driver.
                 new WyvernAnimationDriver('air'),
                 new WyvernBasicSkillset(),
+                playerAttacksGroup,
                 'medium'
             ),
             createWyvern(
                 this.physics.add.sprite(712, 500, ''),
                 new WyvernAnimationDriver('water'),
                 new WyvernBasicSkillset(),
+                playerAttacksGroup,
                 'large'
             ),
             createWyvern(
                 this.physics.add.sprite(312, 500, ''),
                 new WyvernAnimationDriver('fire'),
                 new WyvernBasicSkillset(),
+                playerAttacksGroup,
                 'small'
             ),
         ];
@@ -76,7 +84,12 @@ export class Game extends Scene
                     wyvern.sprite.postFX.clear();
                 }
             });
+            wyvern.sprite.setDepth(10);
         });
+
+        this.dungeon.createSpawner(this, 1024, 0);
+        this.dungeon.createSpawner(this, 1236, 106);
+        this.dungeon.createSpawner(this, 1448, 212);
     }
 
     private player: Wyvern;
@@ -88,6 +101,7 @@ export class Game extends Scene
         }
         this.msg_text.removeFromDisplayList();
 
+        this.physics.add.collider(obj.sprite, this.dungeon.monsters);
         createInputControls(this.input.keyboard!, obj.skillset);
         obj.sprite.postFX.addGlow(parseInt('#ffffff'.substring(1), 16), 2, 0.5, false, .1, 4);
         this.camera.startFollow(obj.sprite);

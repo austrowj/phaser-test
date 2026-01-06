@@ -13,6 +13,7 @@ export function createWyvern(
     sprite: Phaser.GameObjects.Sprite,
     driver: WyvernAnimationDriver,
     skillset: WyvernBasicSkillset,
+    effectsGroup: Phaser.Physics.Arcade.Group,
     size: keyof typeof sizeConfig = 'medium',
 ) {
     // Make sure physics are configured.
@@ -36,7 +37,7 @@ export function createWyvern(
             vector.x * scale * sizeConfig[size].topSpeed,
             vector.y * scale * sizeConfig[size].topSpeed
         ))
-        .when('useSkill', (callback) => callback(sprite, driver.getCurrentHeading()));
+        .when('useSkill', (callback) => callback(sprite, effectsGroup, driver.getCurrentHeading()));
     
     // Initialize animation state.
     driver.setAnimation('Idle');
