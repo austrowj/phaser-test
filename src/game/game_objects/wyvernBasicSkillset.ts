@@ -122,19 +122,19 @@ export class WyvernBasicSkillset {
                             shockwave.emitParticle();
                         });
                     }
-
+                    
                     const blast = effectsGroup.create(sprite.x, sprite.y, '');
                     blast.setOrigin(0.5);
                     blast.setScale(0); // No collision at first.
                     blast.body.setCircle(20, -4, -4); // idk why the alignment is so weird
-                    blast.body.setMass(100000); // Very heavy so it doesn't get moved by collisions.
+                    blast.body.immovable = true;
                     blast.setAlpha(0);
 
-                    sprite.scene.time.delayedCall(this.ms(200), () => blast.setScale(8.0 * sprite.scale));
+                    //sprite.scene.time.delayedCall(this.ms(200), () => blast.setScale(8.0 * sprite.scale));
 
-                    sprite.scene.time.delayedCall(this.ms(500), () => {                    
+                    sprite.scene.time.delayedCall(this.ms(500), () => {
                         shockwave.destroy();
-                        blast.destroy();
+                        //blast.destroy();
                         this.fsm.go('Idle');
                     });
                 });
