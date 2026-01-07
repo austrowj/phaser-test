@@ -37,7 +37,7 @@ export class Dungeon {
         this.monsters = scene.physics.add.group();
     }
 
-    private createMonster(scene: Phaser.Scene, x: number, y: number) {
+    private createMonster(scene: Phaser.Scene, x: number, y: number, config?: {index: number, sheet: 'monsters' | 'creatures' | 'figures'}) {
         const monsterIndexes = [
             8,  9, 10, 11, 12, 13, 14, 15,
             16, 17, 18, 19, 20, 21, 22, 23,
@@ -45,8 +45,11 @@ export class Dungeon {
             32, 33, 34, 35, 36, 37,
         ]
 
-        const sprite = this.monsters.create(x, y, 'monsters', Phaser.Utils.Array.GetRandom(monsterIndexes));
+        const sprite = config
+            ? this.monsters.create(x, y, config.sheet, config.index)
+            : this.monsters.create(x, y, 'monsters', Phaser.Utils.Array.GetRandom(monsterIndexes));
         sprite.setOrigin(0.5);
+        sprite.setScale(1.25);
         sprite.body.setCircle(16);
         
         sprite.body.setVelocity(-100, 50);
@@ -64,7 +67,7 @@ export class Dungeon {
         return sprite;
     }
 
-    public createSpawner(scene: Phaser.Scene, x: number, y: number) {
+    public createSpawner(scene: Phaser.Scene, x: number, y: number, delay?: number, spawncb?: (scene: Phaser.Scene, x: number, y: number) => void) {
 
         const sprite = scene.add.sprite(x, y, 'monsters', 26);
         sprite.setOrigin(0.5);
@@ -95,15 +98,28 @@ export class Dungeon {
         });
         sprite.postFX.addGlow(parseInt('#ff7300'.substring(1), 16), 2, 0.5, false, .1, 4);
 
+        const myDelay = delay !== undefined ? delay : 3000;
+        const myCb = spawncb !== undefined ? () => spawncb!(scene, x, y) : () => this.createMonster(scene, x, y);
+
         const spawnEvent = scene.time.addEvent({
-            delay: 3000 + Phaser.Math.Between(-1000, 1000),
+            delay: myDelay + Phaser.Math.Between(-myDelay/3, myDelay/3),
             loop: true,
-            callback: () => {
-                this.createMonster(scene, x, y);
-            }
+            callback: myCb
         });
+
+        myCb();
         
         return { sprite, spawnEvent };
+    }
+
+    public createPack = (scene: Phaser.Scene, x: number, y: number) => {
+        this.createMonster(scene, x, y, { sheet: 'figures', index: 140 }); // Coins
+        this.createMonster(scene, x + 48, y - 24, { sheet: 'figures', index: 140 }); // Coins
+        this.createMonster(scene, x + 96, y - 48, { sheet: 'figures', index: 140 }); // Coins
+        this.createMonster(scene, x - 64, y + 32, { sheet: 'figures', index: 248 }); // King Arthur
+
+        this.createMonster(scene, x - 64, y - 32, { sheet: 'creatures', index: 65 }); // Dwarf
+        this.createMonster(scene, x + 64, y + 32, { sheet: 'creatures', index: 65 }); // Dwarf
     }
 }
 
@@ -114,4 +130,6 @@ export function load(scene: Phaser.Scene) {
         { frameWidth: TILE_WIDTH, frameHeight: TILE_HEIGHT }
     );
     scene.load.spritesheet('monsters', '/denzi_iso/img/32x32_monsters_Denzi120117-1.png', { frameWidth: 32, frameHeight: 32 });
+    scene.load.spritesheet('creatures', '/denzi_iso/img/32x32_monsters_slashem_Denzi090824-1.PNG', { frameWidth: 32, frameHeight: 32 });
+    scene.load.spritesheet('figures', '/denzi_iso/img/32x32_monsters_slashem_Denzi090918-1.PNG', { frameWidth: 32, frameHeight: 32 });
 }

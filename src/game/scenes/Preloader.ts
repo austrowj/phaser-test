@@ -46,6 +46,8 @@ export class Preloader extends Scene
             'denzi_iso/img/32x32_mouse_pointer_Denzi040418.gif',
             { frameWidth: 32, frameHeight: 32 }
         );
+        
+        this.load.spritesheet('more_monsters', '/denzi_iso/img/32x32_monsters_slashem_Denzi090830-3.PNG', { frameWidth: 32, frameHeight: 32 });
     }
 
     create ()

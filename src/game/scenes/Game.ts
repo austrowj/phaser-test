@@ -40,30 +40,20 @@ export class Game extends Scene
         this.dungeon = new Dungeon(this, 1024, 0);
 
         const playerAttacksGroup = this.physics.add.group();
-        this.physics.add.collider(playerAttacksGroup, this.dungeon.monsters, (attackSprite, monsterSprite) => { });
+        const playerGroup = this.physics.add.group();
+        playerGroup.setCollidesWith(1);
+        
+        playerAttacksGroup.setCollidesWith(2);
+        this.dungeon.monsters.setCollidesWith(2);
 
         const wyverns = [
             createWyvern(
-                this.physics.add.sprite(512, 300, ''), // Sprite key will be overridden by animation driver.
+                playerGroup.create(512, 300, ''), // Sprite key will be overridden by animation driver.
                 new WyvernAnimationDriver('air'),
                 new WyvernBasicSkillset(),
                 playerAttacksGroup,
                 'medium'
-            ),
-            createWyvern(
-                this.physics.add.sprite(712, 500, ''),
-                new WyvernAnimationDriver('water'),
-                new WyvernBasicSkillset(),
-                playerAttacksGroup,
-                'large'
-            ),
-            createWyvern(
-                this.physics.add.sprite(312, 500, ''),
-                new WyvernAnimationDriver('fire'),
-                new WyvernBasicSkillset(),
-                playerAttacksGroup,
-                'small'
-            ),
+            )
         ];
 
         wyverns.forEach((wyvern, _) => {
@@ -87,9 +77,11 @@ export class Game extends Scene
             wyvern.sprite.setDepth(10);
         });
 
-        this.dungeon.createSpawner(this, 1024, 0);
-        this.dungeon.createSpawner(this, 1236, 106);
-        this.dungeon.createSpawner(this, 1448, 212);
+        this.dungeon.createSpawner(this, 1024, 0, 6000);
+        this.dungeon.createSpawner(this, 1236, 106, 10000, this.dungeon.createPack);
+        this.dungeon.createSpawner(this, 1448, 212, 6000);
+
+        this.choosePlayer(wyverns[0]);
     }
 
     private player: Wyvern;
