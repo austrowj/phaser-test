@@ -106,13 +106,13 @@ function createAnimationConfigs(
 function loadInternal(scene: Phaser.Scene) {
 
     Variants.forEach(variant => {
-        if (variant !== 'earth') { // Skip because we're not using it for testing.
+        //if (variant !== 'earth') { // Skip because we're not using it for testing.
             scene.load.spritesheet(
                 'wyvern_' + variant,
                 'character/wyvern_' + variant + '.png',
                 { frameWidth: 256, frameHeight: 256 }
             );
-        }
+        //}
     });
 
     scene.load.on('complete', () => { // Eagerly register all the animations for every variant.

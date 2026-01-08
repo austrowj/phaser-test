@@ -30,10 +30,10 @@ export function createInputControls(keyboard: Phaser.Input.Keyboard.KeyboardPlug
     keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.PERIOD)
         .on('down', () => bridge.dash = true)
         .on('up',   () => bridge.dash = false);
-    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
+    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.COMMA)
         .on('down', () => bridge.wingBlast = true)
         .on('up',   () => bridge.wingBlast = false);
-    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.COMMA)
+    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
         .on('down', () => bridge.breathe = true)
         .on('up',   () => bridge.breathe = false);
 

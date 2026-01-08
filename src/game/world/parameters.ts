@@ -9,3 +9,18 @@ export const HeadingVectors = {
     W:  new Phaser.Math.Vector2(-1,  0).normalize(),
     NW: new Phaser.Math.Vector2(-2, -1).normalize(),
 } as const;
+
+export const Step = 32;
+
+export function xy(heading: Heading, distance: number, origin?: [number, number]): [number, number] {
+    if (origin) {
+        return [
+            origin[0] + HeadingVectors[heading].x * distance,
+            origin[1] + HeadingVectors[heading].y * distance
+        ];
+    }
+    return [
+        HeadingVectors[heading].x * distance,
+        HeadingVectors[heading].y * distance
+    ];
+}

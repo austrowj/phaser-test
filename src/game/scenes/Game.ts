@@ -49,7 +49,7 @@ export class Game extends Scene
         const wyverns = [
             createWyvern(
                 playerGroup.create(512, 300, ''), // Sprite key will be overridden by animation driver.
-                new WyvernAnimationDriver('air'),
+                new WyvernAnimationDriver('earth'),
                 new WyvernBasicSkillset(),
                 playerAttacksGroup,
                 'medium'
@@ -77,7 +77,7 @@ export class Game extends Scene
             wyvern.sprite.setDepth(10);
         });
 
-        this.dungeon.createSpawner(this, 1024, 0, 6000);
+        //this.dungeon.createSpawner(this, 1024, 0, 6000);
         this.dungeon.createSpawner(this, 1236, 106, 10000, this.dungeon.createPack);
         this.dungeon.createSpawner(this, 1448, 212, 6000);
 
@@ -95,7 +95,7 @@ export class Game extends Scene
 
         this.physics.add.collider(obj.sprite, this.dungeon.monsters);
         createInputControls(this.input.keyboard!, obj.skillset);
-        obj.sprite.postFX.addGlow(parseInt('#ffffff'.substring(1), 16), 2, 0.5, false, .1, 4);
+        obj.sprite.postFX.addGlow(parseInt('#000000'.substring(1), 16), 2, 0.5, false, .1, 4);
         this.camera.startFollow(obj.sprite);
         this.player = obj;
     }
