@@ -1,3 +1,8 @@
+import { createBagOfCoins } from "./bagOfCoins";
+import { Step, xy } from "../world/parameters";
+import { createKing } from "./king";
+import { createDwarf } from "./dwarf";
+
 const TILE_WIDTH = 32;
 const TILE_HEIGHT = 16;
 
@@ -37,7 +42,7 @@ export class Dungeon {
         this.monsters = scene.physics.add.group();
     }
 
-    private createMonster(scene: Phaser.Scene, x: number, y: number, config?: {index: number, sheet: 'monsters' | 'creatures' | 'figures'}) {
+    private createMonster(scene: Phaser.Scene, x: number, y: number, config?: {index: number, sheet: string} ) {
         const monsterIndexes = [
             8,  9, 10, 11, 12, 13, 14, 15,
             16, 17, 18, 19, 20, 21, 22, 23,
@@ -47,21 +52,21 @@ export class Dungeon {
 
         const sprite = config
             ? this.monsters.create(x, y, config.sheet, config.index)
-            : this.monsters.create(x, y, 'monsters', Phaser.Utils.Array.GetRandom(monsterIndexes));
+            : this.monsters.create(x, y, 'monsters0', Phaser.Utils.Array.GetRandom(monsterIndexes));
         sprite.setOrigin(0.5);
         sprite.setScale(1.25);
         sprite.body.setCircle(16);
         
-        sprite.body.setVelocity(-100, 50);
+        sprite.body.setVelocity(-50, 25);
 
-        scene.time.delayedCall(9000, () => {
+        scene.time.delayedCall(18000, () => {
             scene.tweens.add({
                 targets: sprite,
                 alpha: { from: 1.0, to: 0.0 },
-                duration: 1000,
+                duration: 2000,
                 ease: 'Linear'
             });
-            scene.time.delayedCall(1000, () => { sprite.destroy(); });
+            scene.time.delayedCall(2000, () => { sprite.destroy(); });
         });
 
         return sprite;
@@ -69,7 +74,7 @@ export class Dungeon {
 
     public createSpawner(scene: Phaser.Scene, x: number, y: number, delay?: number, spawncb?: (scene: Phaser.Scene, x: number, y: number) => void) {
 
-        const sprite = scene.add.sprite(x, y, 'monsters', 26);
+        const sprite = scene.add.sprite(x, y, 'monsters0', 26);
         sprite.setOrigin(0.5);
         sprite.setScale(1.44);
 
@@ -113,13 +118,19 @@ export class Dungeon {
     }
 
     public createPack = (scene: Phaser.Scene, x: number, y: number) => {
-        this.createMonster(scene, x, y, { sheet: 'figures', index: 140 }); // Coins
-        this.createMonster(scene, x + 48, y - 24, { sheet: 'figures', index: 140 }); // Coins
-        this.createMonster(scene, x + 96, y - 48, { sheet: 'figures', index: 140 }); // Coins
-        this.createMonster(scene, x - 64, y + 32, { sheet: 'figures', index: 248 }); // King Arthur
+        createKing(scene, x, y);
 
-        this.createMonster(scene, x - 64, y - 32, { sheet: 'creatures', index: 65 }); // Dwarf
-        this.createMonster(scene, x + 64, y + 32, { sheet: 'creatures', index: 65 }); // Dwarf
+        const bagPositions = [
+            xy('NE', 2*Step, [x, y]),
+            xy('NE', 4*Step, [x, y]),
+            xy('NE', 6*Step, [x, y]),
+        ];
+
+        bagPositions.forEach((pos) => {
+            createBagOfCoins(scene, ...pos);
+            createDwarf(scene, ...xy('NW', 2*Step, pos));
+            createDwarf(scene, ...xy('SE', 2*Step, pos));
+        });
     }
 }
 
@@ -129,7 +140,4 @@ export function load(scene: Phaser.Scene) {
         'denzi_iso/img/96x96-32x32_dungeon_Denzi071009-1.PNG',
         { frameWidth: TILE_WIDTH, frameHeight: TILE_HEIGHT }
     );
-    scene.load.spritesheet('monsters', '/denzi_iso/img/32x32_monsters_Denzi120117-1.png', { frameWidth: 32, frameHeight: 32 });
-    scene.load.spritesheet('creatures', '/denzi_iso/img/32x32_monsters_slashem_Denzi090824-1.PNG', { frameWidth: 32, frameHeight: 32 });
-    scene.load.spritesheet('figures', '/denzi_iso/img/32x32_monsters_slashem_Denzi090918-1.PNG', { frameWidth: 32, frameHeight: 32 });
 }

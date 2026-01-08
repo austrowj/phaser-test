@@ -1,6 +1,7 @@
 import { Scene } from 'phaser';
 import { load as loadDungeon } from '../game_objects/dungeon';
 import { load as loadWyverns } from '../game_objects/wyvernAnimationDriver';
+import * as spriteMaps from '../data/spritesheetMaps';
 
 export class Preloader extends Scene
 {
@@ -46,8 +47,10 @@ export class Preloader extends Scene
             'denzi_iso/img/32x32_mouse_pointer_Denzi040418.gif',
             { frameWidth: 32, frameHeight: 32 }
         );
-        
-        this.load.spritesheet('more_monsters', '/denzi_iso/img/32x32_monsters_slashem_Denzi090830-3.PNG', { frameWidth: 32, frameHeight: 32 });
+
+        Object.entries(spriteMaps).forEach(([key, map]) => {
+            this.load.spritesheet(key, map.path, map.frameDimensions);
+        });
     }
 
     create ()

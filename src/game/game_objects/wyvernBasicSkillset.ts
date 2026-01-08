@@ -169,7 +169,7 @@ export class WyvernBasicSkillset {
                         blendMode: 'ADD',
                         //duration: 1000,
                     });
-                    flames.setDepth(1);
+                    flames.setDepth(11);
 
                     this.fsm.once('leave_BreathAttack', () => {
                         flames.stop();
