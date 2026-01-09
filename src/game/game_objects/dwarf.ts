@@ -7,7 +7,8 @@ export function createDwarf(scene: Phaser.Scene, x: number, y: number) {
     const container = scene.add.container(x, y);
     const sprite = scene.add.sprite(0, 0, 'monsters1', monsters1.indexOf.Dwarf);
     container.add(sprite);
-    sprite.setOrigin(0.5, 1);
+    //sprite.setOrigin(0.5, 1);
+    sprite.setCrop(1, 0, sprite.width - 2, sprite.height); // A little green bleeds into the sprite
     sprite.flipX = true;
 
     scene.physics.add.existing(container);
@@ -19,7 +20,7 @@ export function createDwarf(scene: Phaser.Scene, x: number, y: number) {
     scene.time.delayedCall(Phaser.Math.Between(0, 500), () => {
         scene.tweens.add({
             targets: sprite,
-            angle: { from: -6, to: 6 },
+            angle: { from: -3, to: 3 },
             yoyo: true,
             repeat: -1,
             duration: 400,

@@ -7,6 +7,7 @@ export function createKing(scene: Phaser.Scene, x: number, y: number) {
     const container = scene.add.container(x, y);
     const sprite = scene.add.sprite(0, 0, 'monsters4', monsters4.indexOf.KingArthur);
     container.add(sprite);
+    sprite.setCrop(1, 0, sprite.width - 2, sprite.height);
 
     scene.physics.add.existing(container);
     (container.body as Phaser.Physics.Arcade.Body)

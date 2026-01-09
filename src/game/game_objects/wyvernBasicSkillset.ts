@@ -1,6 +1,6 @@
 import { StateMachine } from '../../util/stateMachine';
 import { Communicator } from '../../util/communicator';
-import { Heading, HeadingVectors } from '../world/parameters';
+import { Heading, HeadingVectors, xy } from '../world/parameters';
 import { WyvernAnimation } from './wyvernAnimationDriver';
 
 type WyvernState = 'Idle' | 'Move' | 'Dash' | 'WingBlast' | 'BreathAttack';
@@ -95,7 +95,7 @@ export class WyvernBasicSkillset {
             })
             .when('enter_WingBlast', () => {
                 this.comms.send('setAnimation', 'WingBlast');
-                this.comms.send('useSkill', (sprite, effectsGroup, _) => {
+                this.comms.send('useSkill', (sprite, effectsGroup, heading) => {
 
                     const shockwave = sprite.scene.add.particles(sprite.x, sprite.y, 'flares', {
                         frame: 'white',
@@ -123,18 +123,17 @@ export class WyvernBasicSkillset {
                         });
                     }
                     
-                    const blast = effectsGroup.create(sprite.x, sprite.y, '');
+                    const blast = effectsGroup.create(sprite.x, sprite.y, 'flares', 'white');
+                    const body = blast.body! as Phaser.Physics.Arcade.Body;
                     blast.setOrigin(0.5);
-                    blast.setScale(0); // No collision at first.
-                    blast.body.setCircle(20, -4, -4); // idk why the alignment is so weird
-                    blast.body.immovable = true;
-                    blast.setAlpha(0);
+                    body.setCircle(16);
+                    body.setVelocity(...xy(heading, 200));
 
                     //sprite.scene.time.delayedCall(this.ms(200), () => blast.setScale(8.0 * sprite.scale));
 
                     sprite.scene.time.delayedCall(this.ms(500), () => {
                         shockwave.destroy();
-                        //blast.destroy();
+                        blast.destroy();
                         this.fsm.go('Idle');
                     });
                 });

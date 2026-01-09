@@ -41,10 +41,10 @@ export class Game extends Scene
 
         const playerAttacksGroup = this.physics.add.group();
         const playerGroup = this.physics.add.group();
-        playerGroup.setCollidesWith(1);
+        playerGroup.setCollidesWith(1 << 0);
         
-        playerAttacksGroup.setCollidesWith(2);
-        this.dungeon.monsters.setCollidesWith(2);
+        playerAttacksGroup.setCollidesWith(1 << 1);
+        this.dungeon.monsters.setCollidesWith(1 << 1);
 
         const wyverns = [
             createWyvern(
