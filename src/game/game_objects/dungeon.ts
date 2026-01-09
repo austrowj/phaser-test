@@ -118,7 +118,7 @@ export class Dungeon {
     }
 
     public createPack = (scene: Phaser.Scene, x: number, y: number) => {
-        createKing(scene, x, y);
+        createKing(scene, x, y, this.monsters);
 
         const bagPositions = [
             xy('NE', 2*Step, [x, y]),
@@ -127,9 +127,9 @@ export class Dungeon {
         ];
 
         bagPositions.forEach((pos) => {
-            createBagOfCoins(scene, ...pos);
-            createDwarf(scene, ...xy('NW', 2*Step, pos));
-            createDwarf(scene, ...xy('SE', 2*Step, pos));
+            createBagOfCoins(scene, ...pos, this.monsters);
+            createDwarf(scene, ...xy('NW', 2*Step, pos), this.monsters);
+            createDwarf(scene, ...xy('SE', 2*Step, pos), this.monsters);
         });
     }
 }
