@@ -2,20 +2,19 @@ import { monsters4 } from '../data/spritesheetMaps';
 import { xy, Step } from '../world/parameters';
 import { fadeOutAndDestroy } from './effects';
 
-export function createBagOfCoins(scene: Phaser.Scene, x: number, y: number) {
+export function createBagOfCoins(scene: Phaser.Scene, x: number, y: number, physicsGroup?: Phaser.Physics.Arcade.Group) {
 
-    const container = scene.add.container(x, y);
-
-    const sprite = scene.physics.add.sprite(0, 0, 'monsters4', monsters4.indexOf.LargeCoinBag);
-    container.add(sprite);
-    sprite.setOrigin(0.5, 1);
+    const sprite = scene.add.sprite(x, y, 'monsters4', monsters4.indexOf.LargeCoinBag);
+    sprite.setOrigin(0.5);
     sprite.setCrop(1, 0, sprite.width - 2, sprite.height);
 
-    //scene.physics.add.existing(physicsSprite);
-    (sprite.body as Phaser.Physics.Arcade.Body)
-        .setCircle(16)
-        .setVelocity(...xy('SW', 2*Step))
-    ;
+    if (physicsGroup) {
+        physicsGroup.add(sprite);
+        (sprite.body as Phaser.Physics.Arcade.Body)
+            .setCircle(16)
+            .setVelocity(...xy('SW', 2*Step))
+        ;
+    }
 
     // slight bounce
     /*
@@ -31,8 +30,8 @@ export function createBagOfCoins(scene: Phaser.Scene, x: number, y: number) {
     });*/
 
     scene.time.delayedCall(18000, () => {
-        fadeOutAndDestroy(scene, container, 2000);
+        fadeOutAndDestroy(scene, sprite, 2000);
     });
 
-    return container;
+    return sprite;
 }

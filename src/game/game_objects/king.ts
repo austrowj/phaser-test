@@ -2,22 +2,22 @@ import { monsters4 } from '../data/spritesheetMaps';
 import { Step, xy } from '../world/parameters';
 import { fadeOutAndDestroy } from './effects';
 
-export function createKing(scene: Phaser.Scene, x: number, y: number) {
+export function createKing(scene: Phaser.Scene, x: number, y: number, physicsGroup?: Phaser.Physics.Arcade.Group) {
 
-    const container = scene.add.container(x, y);
-    const sprite = scene.add.sprite(0, 0, 'monsters4', monsters4.indexOf.KingArthur);
-    container.add(sprite);
+    const sprite = scene.add.sprite(x, y, 'monsters4', monsters4.indexOf.KingArthur);
     sprite.setCrop(1, 0, sprite.width - 2, sprite.height);
 
-    scene.physics.add.existing(container);
-    (container.body as Phaser.Physics.Arcade.Body)
-        .setCircle(16)
-        .setVelocity(...xy('SW', 2*Step))
-    ;
+    if (physicsGroup) {
+        physicsGroup.add(sprite);
+        (sprite.body as Phaser.Physics.Arcade.Body)
+            .setCircle(16)
+            .setVelocity(...xy('SW', 2*Step))
+        ;
+    }
     
     scene.time.delayedCall(18000, () => {
-        fadeOutAndDestroy(scene, container, 2000);
+        fadeOutAndDestroy(scene, sprite, 2000);
     });
 
-    return container;
+    return sprite;
 }

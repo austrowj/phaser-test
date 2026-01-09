@@ -41,10 +41,11 @@ export class Game extends Scene
 
         const playerAttacksGroup = this.physics.add.group();
         const playerGroup = this.physics.add.group();
-        playerGroup.setCollidesWith(1 << 0);
-        
-        playerAttacksGroup.setCollidesWith(1 << 1);
-        this.dungeon.monsters.setCollidesWith(1 << 1);
+
+        this.physics.add.collider(playerAttacksGroup, this.dungeon.monsters, (attackSprite, _) => {
+            attackSprite.destroy();
+        });
+        //this.physics.add.collider(this.dungeon.monsters, this.dungeon.monsters);
 
         const wyverns = [
             createWyvern(
@@ -93,7 +94,6 @@ export class Game extends Scene
         }
         this.msg_text.removeFromDisplayList();
 
-        this.physics.add.collider(obj.sprite, this.dungeon.monsters);
         createInputControls(this.input.keyboard!, obj.skillset);
         obj.sprite.postFX.addGlow(parseInt('#000000'.substring(1), 16), 2, 0.5, false, .1, 4);
         this.camera.startFollow(obj.sprite);
