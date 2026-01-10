@@ -1,4 +1,4 @@
-export class Communicator<EventMap extends Record<string, (...args: any[]) => void>> {
+export class Broadcaster<EventMap extends Record<string, (...args: any[]) => void>> {
 
     private emitter: Phaser.Events.EventEmitter = new Phaser.Events.EventEmitter();
 
@@ -7,12 +7,8 @@ export class Communicator<EventMap extends Record<string, (...args: any[]) => vo
         return this;
     }
 
-    public send<K extends keyof EventMap & string>(event: K, ...args: Parameters<EventMap[K]>) {
+    public broadcast<K extends keyof EventMap & string>(event: K, ...args: Parameters<EventMap[K]>) {
         this.emitter.emit(event, ...args);
-    }
-
-    public removeListeners() {
-        this.emitter.removeAllListeners();
     }
 
 }

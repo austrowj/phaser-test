@@ -1,7 +1,7 @@
 import { StateMachine } from '../../util/stateMachine';
-import { Communicator } from '../../util/communicator';
+import { Broadcaster } from '../../util/broadcaster';
 import { Heading, HeadingVectors, xy } from '../world/parameters';
-import { WyvernAnimation } from './wyvernAnimationDriver';
+import { WyvernAnimation } from './animatedWyvern';
 
 type WyvernState = 'Idle' | 'Move' | 'Dash' | 'WingBlast' | 'BreathAttack';
 
@@ -14,9 +14,9 @@ class Controls {
     ) {}
 }
 
-export class WyvernBasicSkillset {
+export class WyvernDriver {
 
-    public comms = new Communicator<{
+    public comms = new Broadcaster<{
         stop: () => void,
         go: (vector: Phaser.Math.Vector2, scale: number) => void,
         setHeading: (heading: Heading) => void,
@@ -51,8 +51,8 @@ export class WyvernBasicSkillset {
         this.fsm = new StateMachine<WyvernState>('Idle')
 
             .when('enter_Idle', () => {
-                this.comms.send('setAnimation', 'Idle');
-                this.comms.send('stop');
+                this.comms.broadcast('setAnimation', 'Idle');
+                this.comms.broadcast('stop');
             })
             .when('tick_Idle', () => {
                 if (this.controlBridge.dash) { this.fsm.go('Dash'); }
@@ -60,23 +60,23 @@ export class WyvernBasicSkillset {
                 else if (this.controlBridge.breathe) { this.fsm.go('BreathAttack'); }
                 else if (this.controlBridge.steer) { this.fsm.go('Move'); }
             })
-                          
-            .when('enter_Move', () => this.comms.send('setAnimation', 'Move'))
-            .when('leave_Move', () => this.comms.send('stop'))
+            
+            .when('enter_Move', () => this.comms.broadcast('setAnimation', 'Move'))
+            .when('leave_Move', () => this.comms.broadcast('stop'))
             .when('tick_Move', () => {
                 if (this.controlBridge.dash) { this.fsm.go('Dash'); }
                 else if (this.controlBridge.wingBlast) { this.fsm.go('WingBlast'); }
                 else if (this.controlBridge.breathe) { this.fsm.go('BreathAttack'); }
                 else if (this.controlBridge.steer) {
-                    this.comms.send('setHeading', this.controlBridge.steer);
-                    this.comms.send('go', HeadingVectors[this.controlBridge.steer], 1.0);
+                    this.comms.broadcast('setHeading', this.controlBridge.steer);
+                    this.comms.broadcast('go', HeadingVectors[this.controlBridge.steer], 1.0);
                 }
                 else { this.fsm.go('Idle'); }
             })
             
             .when('enter_Dash', () => {
-                this.comms.send('setAnimation', 'Dash');
-                this.comms.send('useSkill', (sprite, _, heading) => {
+                this.comms.broadcast('setAnimation', 'Dash');
+                this.comms.broadcast('useSkill', (sprite, _, heading) => {
                     const headingVector = HeadingVectors[heading];
                     sprite.scene.tweens.add({
                         targets: sprite,
@@ -87,56 +87,26 @@ export class WyvernBasicSkillset {
                         yoyo: true,
                         onYoyo: () => {
                             // On yoyo (halfway point), set high speed.
-                            this.comms.send('go', headingVector, 6.0);
+                            this.comms.broadcast('go', headingVector, 6.0);
                         }
                     });
                     sprite.scene.time.delayedCall(500, () => this.fsm.go('Idle'), [], this);
                 });
             })
             .when('enter_WingBlast', () => {
-                this.comms.send('setAnimation', 'WingBlast');
-                this.comms.send('useSkill', (sprite, effectsGroup, heading) => {
-
-                    /*
-                    const shockwave = sprite.scene.add.particles(sprite.x, sprite.y, 'flares', {
-                        frame: 'white',
-                        lifespan: 400 * sprite.scale,
-                        color: [parseInt('#d4ff8f'.substring(1), 16)],
-                        scale: 0.04,
-                        alpha: {
-                            start: 5.0,
-                            end: 0.0,
-                            ease: 'Cubic.out'
-                        },
-                        speed: 600,
-                        angle: { min: 0, max: 360, steps: 360 },
-                        quantity: 360,
-                        blendMode: 'NORMAL',
-                        emitting: false
-                    });
-                    shockwave.setDepth(1);
-
-                    // Extra shockwaves for larger wyverns.
-                    const shockwaveCount = Math.floor(sprite.scale**2 * 4);
-                    for (let i = 0; i <= shockwaveCount; i++) {
-                        sprite.scene.time.delayedCall(i*20*sprite.scale + this.ms(120), () => {
-                            shockwave.emitParticle();
-                        });
-                    }
-                    */
-                    
+                this.comms.broadcast('setAnimation', 'WingBlast');
+                this.comms.broadcast('useSkill', (sprite, effectsGroup, heading) => {
                     const blast = effectsGroup.create(sprite.x, sprite.y, 'flares', 'white', false, false);
                     const body = blast.body! as Phaser.Physics.Arcade.Body;
                     blast.setScale(0.5);
 
-                    sprite.scene.time.delayedCall(this.ms(200), () => {
+                    sprite.scene.time.delayedCall(this.ms(140), () => {
                         blast.visible = true;
                         blast.active = true;
                         body.setVelocity(...xy(heading, 800));
                     });
 
                     sprite.scene.time.delayedCall(this.ms(500), () => {
-                        //shockwave.destroy();
                         this.fsm.go('Idle');
                     });
                     sprite.scene.time.delayedCall(this.ms(2000), () => {
@@ -145,8 +115,8 @@ export class WyvernBasicSkillset {
                 });
             })
             .when('enter_BreathAttack', () => {
-                this.comms.send('setAnimation', 'BreathAttack');
-                this.comms.send('useSkill', (sprite, _, heading) => {
+                this.comms.broadcast('setAnimation', 'BreathAttack');
+                this.comms.broadcast('useSkill', (sprite, _, heading) => {
 
                     const headingVector = HeadingVectors[heading];
 

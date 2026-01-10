@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 import { createInputControls } from '../game_objects/wyvernInputController';
-import { WyvernBasicSkillset } from '../game_objects/wyvernBasicSkillset';
-import { WyvernAnimationDriver } from '../game_objects/wyvernAnimationDriver';
+import { WyvernDriver } from '../game_objects/wyvernDriver';
+import { AnimatedWyvern } from '../game_objects/animatedWyvern';
 import { createWyvern, Wyvern } from '../game_objects/wyvern';
 import { Dungeon } from '../game_objects/dungeon';
 
@@ -49,9 +49,8 @@ export class Game extends Scene
 
         const wyverns = [
             createWyvern(
-                playerGroup.create(512, 300, ''), // Sprite key will be overridden by animation driver.
-                new WyvernAnimationDriver('earth'),
-                new WyvernBasicSkillset(),
+                new AnimatedWyvern(playerGroup.create(512, 300, ''), 'earth'),
+                new WyvernDriver(),
                 playerAttacksGroup,
                 'medium'
             )

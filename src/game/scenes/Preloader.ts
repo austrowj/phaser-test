@@ -1,6 +1,6 @@
 import { Scene } from 'phaser';
 import { load as loadDungeon } from '../game_objects/dungeon';
-import { load as loadWyverns } from '../game_objects/wyvernAnimationDriver';
+import { load as loadWyverns } from '../game_objects/animatedWyvern';
 import * as spriteMaps from '../data/spritesheetMaps';
 
 export class Preloader extends Scene

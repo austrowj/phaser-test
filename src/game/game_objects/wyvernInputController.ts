@@ -1,7 +1,7 @@
 import { Heading } from '../world/parameters';
-import { WyvernBasicSkillset } from './wyvernBasicSkillset';
+import { WyvernDriver } from './wyvernDriver';
 
-export function createInputControls(keyboard: Phaser.Input.Keyboard.KeyboardPlugin, skillset: WyvernBasicSkillset) {
+export function createInputControls(keyboard: Phaser.Input.Keyboard.KeyboardPlugin, skillset: WyvernDriver) {
 
     const bridge = skillset.takeControls();
 

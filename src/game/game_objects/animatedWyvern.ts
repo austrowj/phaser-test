@@ -1,17 +1,10 @@
-import { Communicator } from '../../util/communicator';
 import { Heading } from '../world/parameters';
 
 // Designed for external use and/or reference.
 export type WyvernAnimation = keyof typeof animationData;
 export function load(scene: Phaser.Scene) { loadInternal(scene); }
 
-export class WyvernAnimationDriver {
-
-    public comms = new Communicator<{
-        change: (animationKey: AnimationKey) => void,
-        //headingChange: (heading: Heading) => void,
-        //animationChange: (animation: WyvernAnimation) => void,
-    }>();
+export class AnimatedWyvern {
 
     public getCurrentHeading() { return this.currentHeading; }
     public getCurrentAnimation() { return this.currentAnimation; }
@@ -19,22 +12,33 @@ export class WyvernAnimationDriver {
     private currentHeading: Heading = 'S';
     private currentAnimation: WyvernAnimation;
 
-    constructor(private variant: Variant) { this.setAnimation('Idle'); }
+    constructor(
+        public sprite: Phaser.GameObjects.Sprite,
+        private variant: WyvernVariant) {
+            this.setAnimation('Idle');
+        }
 
-    private getAnimationKey(): AnimationKey {
+    private getKeyForSprite(): AnimationKey {
         return `${this.variant}_${this.currentAnimation}_${this.currentHeading}`;
     }
 
     public setHeading(heading: Heading) {
-        this.currentHeading = heading;
-        this.comms.send('change', this.getAnimationKey());
-        //this.comms.send('headingChange', heading);
+        if (this.currentHeading !== heading) {
+            this.currentHeading = heading;
+            const curFrame = this.sprite.anims.currentFrame;
+            this.sprite.anims.play({
+                key: this.getKeyForSprite(),
+                // Have to check if last frame, otherwise phaser doesn't find the next frame correctly and crashes.
+                startFrame: curFrame !== null && !curFrame.isLast ? curFrame.index : 0,
+            });
+        }
     }
 
     public setAnimation(animation: WyvernAnimation) {
-        this.currentAnimation = animation;
-        this.comms.send('change', this.getAnimationKey());
-        //this.comms.send('animationChange', animation);
+        if (this.currentAnimation !== animation) {
+            this.currentAnimation = animation;
+            this.sprite.anims.play(this.getKeyForSprite());
+        }
     }
 }
 
@@ -53,9 +57,9 @@ const HeadingIndexes = {
 type WyvernFrameIndex = typeof HeadingIndexes[keyof typeof HeadingIndexes];
 
 const Variants = ['earth', 'air', 'fire', 'water'] as const;
-type Variant = typeof Variants[number];
+export type WyvernVariant = typeof Variants[number];
 
-type AnimationKey = `${Variant}_${WyvernAnimation}_${Heading}`;
+type AnimationKey = `${WyvernVariant}_${WyvernAnimation}_${Heading}`;
 
 const BaseBehaviors = {
     Hover:   { index: 0 },
@@ -83,7 +87,7 @@ type AnimationParams = {
 
 function createAnimationConfigs(
     key: string,
-    variant: Variant,
+    variant: WyvernVariant,
     params: AnimationParams
 ): Phaser.Types.Animations.Animation[] {
 
