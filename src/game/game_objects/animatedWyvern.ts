@@ -153,7 +153,7 @@ const animationData = (<T extends Record<string, AnimationParams>>(data: T) => d
     Move: {
         base: "Fly",
         animConfig: {
-            frameRate: 12,
+            frameRate: 10,
             repeat: -1,
         },
         framesTemplate: [

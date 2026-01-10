@@ -5,21 +5,24 @@ import { AnimatedWyvern } from '../game_objects/animatedWyvern';
 import { createWyvern, Wyvern } from '../game_objects/wyvern';
 import { Dungeon } from '../game_objects/dungeon';
 
-export class Game extends Scene
-{
+import * as ecs from 'bitecs';
+
+import { Health, Killable } from '../components/health.js';
+import { checkForKill, kill } from '../systems/killCheck.js';
+
+export class Game extends Scene {
+    private world: ecs.World;
+    private systemUpdates: ((world: ecs.World, time: number, delta: number) => void)[] = [];
     private camera: Phaser.Cameras.Scene2D.Camera;
     //background: Phaser.GameObjects.Image;
     msg_text : Phaser.GameObjects.Text;
 
     private dungeon: Dungeon;
 
-    constructor ()
-    {
-        super('Game');
-    }
+    constructor () { super('Game'); }
 
-    create ()
-    {
+    create () {
+        this.world = ecs.createWorld();
         this.camera = this.cameras.main;
         this.camera.setBackgroundColor('#a1a1a1');
 
@@ -45,7 +48,13 @@ export class Game extends Scene
         this.physics.add.collider(playerAttacksGroup, this.dungeon.monsters, (attackSprite, _) => {
             attackSprite.destroy();
         });
-        //this.physics.add.collider(this.dungeon.monsters, this.dungeon.monsters);
+
+        const player = ecs.addEntity(this.world)
+        ecs.addComponents(this.world, player, Health, Killable);
+        Health.current[player] = 10;
+        Health.max[player] = 100;
+        Health.rate[player] = -1;
+        Killable.shouldDie[player] = false;
 
         const wyverns = [
             createWyvern(
@@ -55,33 +64,23 @@ export class Game extends Scene
                 'medium'
             )
         ];
-
-        wyverns.forEach((wyvern, _) => {
-            wyvern.sprite.setInteractive();
-            wyvern.sprite.on('pointerdown', () => {
-                if (this.player !== wyvern) {
-                    wyvern.sprite.postFX.clear();
-                    this.choosePlayer(wyvern);
-                }
-            });
-            wyvern.sprite.on('pointerover', () => {
-                if (this.player !== wyvern) {
-                    wyvern.sprite.postFX.addGlow(parseInt('#09ff00'.substring(1), 16), 4, 0.5, false, .1, 4);
-                }
-            });
-            wyvern.sprite.on('pointerout', () => {
-                if (this.player !== wyvern) {
-                    wyvern.sprite.postFX.clear();
-                }
-            });
-            wyvern.sprite.setDepth(10);
-        });
+        wyverns[0].sprite.setDepth(10);
 
         //this.dungeon.createSpawner(this, 1024, 0, 6000);
         this.dungeon.createSpawner(this, 1236, 106, 10000, this.dungeon.createPack);
         this.dungeon.createSpawner(this, 1448, 212, 6000);
 
         this.choosePlayer(wyverns[0]);
+
+        this.systemUpdates.push(checkForKill);
+        this.systemUpdates.push(kill);
+    }
+
+    update(time: number, delta: number): void {
+        super.update(time, delta);
+        for (const sysUpdate of this.systemUpdates) {
+            sysUpdate(this.world, time, delta);
+        }
     }
 
     private player: Wyvern;

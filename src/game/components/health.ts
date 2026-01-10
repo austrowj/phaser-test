@@ -1,9 +1,9 @@
-import { Broadcaster } from "../../util/broadcaster.js";
+export const Health = {
+    current: [] as number[],
+    max: [] as number[],
+    rate: [] as number[],
+} as const;
 
-export function healthComponent(maxHealth: number) {
-    var currentHealth = maxHealth;
-    const comms = new Broadcaster<{
-        modify: (amount: number) => void,
-        died: () => void,
-    }>();
-}
+export const Killable = {
+    shouldDie: [] as boolean[],
+} as const;

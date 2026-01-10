@@ -25,6 +25,7 @@
         "terser": "^5.39.0"
     },
     "dependencies": {
+        "bitecs": "^0.4.0",
         "phaser": "^3.90.0"
     }
 }
