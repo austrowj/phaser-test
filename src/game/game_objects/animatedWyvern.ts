@@ -1,3 +1,4 @@
+import { Initialize } from '../../util/initComponent';
 import { Heading } from '../world/parameters';
 import * as ecs from 'bitecs';
 
@@ -6,65 +7,56 @@ export type WyvernAnimation = keyof typeof animationData;
 export function load(scene: Phaser.Scene) { loadInternal(scene); }
 
 export const WyvernAnimation = {
-    heading: [] as Heading[],
     animation: [] as WyvernAnimation[],
     variant: [] as WyvernVariant[],
 };
 
-export const ChangeHeading = { heading: [] as Heading[] };
-export const ChangeAnimation = { animation: [] as WyvernAnimation[] };
-export const SpriteComponent = { sprite: [] as Phaser.GameObjects.Sprite[] };
+export const ChangeHeading = [] as Heading[];
+export const ChangeAnimation = [] as WyvernAnimation[];
+export const SpriteComponent = [] as Phaser.GameObjects.Sprite[];
 
-export function getWyvernAnimationSystem(world: ecs.World) {
+export function animateWyverns(world: ecs.World) {
 
-    ecs.observe(world, ecs.onAdd(SpriteComponent, WyvernAnimation), (eid) => {
-        console.log(`Wyvern added with eid ${eid}`);
-        WyvernAnimation.animation[eid] = 'Idle';
-        WyvernAnimation.heading[eid] = 'S';
-        WyvernAnimation.variant[eid] = 'earth';
-
-        SpriteComponent.sprite[eid].anims.play(animationKey(
+    for (const eid of ecs.query(world, [WyvernAnimation, SpriteComponent, Heading, Initialize])) {
+        SpriteComponent[eid].anims.play(animationKey(
             WyvernAnimation.variant[eid],
             WyvernAnimation.animation[eid],
-            WyvernAnimation.heading[eid],
+            Heading[eid],
         ));
-    });
+    }
 
-    return () => {
+    for (var eid of ecs.query(world, [WyvernAnimation, SpriteComponent, ChangeHeading])) {
+        const sprite = SpriteComponent[eid];
 
-        for (var eid of ecs.query(world, [WyvernAnimation, SpriteComponent, ChangeHeading])) {
-            const sprite = SpriteComponent.sprite[eid];
+        if (Heading[eid] !== ChangeHeading[eid]) {
 
-            if (WyvernAnimation.heading[eid] !== ChangeHeading.heading[eid]) {
-
-                WyvernAnimation.heading[eid] = ChangeHeading.heading[eid];
-                const curFrame = sprite.anims.currentFrame;
-                sprite.anims.play({
-                    key: animationKey(
-                        WyvernAnimation.variant[eid],
-                        WyvernAnimation.animation[eid],
-                        WyvernAnimation.heading[eid],
-                    ),
-                    // Have to check if last frame, otherwise phaser doesn't find the next frame correctly and crashes.
-                    startFrame: curFrame !== null && !curFrame.isLast ? curFrame.index : 0,
-                });
-            }
-
-            ecs.removeComponent(world, eid, ChangeHeading);
+            Heading[eid] = ChangeHeading[eid];
+            const curFrame = sprite.anims.currentFrame;
+            sprite.anims.play({
+                key: animationKey(
+                    WyvernAnimation.variant[eid],
+                    WyvernAnimation.animation[eid],
+                    Heading[eid],
+                ),
+                // Have to check if last frame, otherwise phaser doesn't find the next frame correctly and crashes.
+                startFrame: curFrame !== null && !curFrame.isLast ? curFrame.index : 0,
+            });
         }
 
-        for (var eid of ecs.query(world, [WyvernAnimation, SpriteComponent, ChangeAnimation])) {
-            const sprite = SpriteComponent.sprite[eid];
+        ecs.removeComponent(world, eid, ChangeHeading);
+    }
 
-            WyvernAnimation.animation[eid] = ChangeAnimation.animation[eid];
-            sprite.anims.play(animationKey(
-                WyvernAnimation.variant[eid],
-                WyvernAnimation.animation[eid],
-                WyvernAnimation.heading[eid],
-            ), true);
-            ecs.removeComponent(world, eid, ChangeAnimation);
-        }
-    };
+    for (var eid of ecs.query(world, [WyvernAnimation, SpriteComponent, ChangeAnimation])) {
+        const sprite = SpriteComponent[eid];
+
+        WyvernAnimation.animation[eid] = ChangeAnimation[eid];
+        sprite.anims.play(animationKey(
+            WyvernAnimation.variant[eid],
+            WyvernAnimation.animation[eid],
+            Heading[eid],
+        ), true);
+        ecs.removeComponent(world, eid, ChangeAnimation);
+    }
 }
 
 // Internal definitions below.

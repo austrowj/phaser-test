@@ -1,14 +1,15 @@
 import { Scene } from 'phaser';
-import { createInputControls } from '../game_objects/wyvernInputController';
-import { WyvernDriver } from '../game_objects/wyvernDriver';
-import { createWyvern, Wyvern } from '../game_objects/wyvern';
+import { createInputControlSystem } from '../game_objects/wyvernInputController';
+import { Controls, createWyvernDriverSystem } from '../game_objects/wyvernDriver';
+import { createWyvern } from '../game_objects/wyvern';
 import { Dungeon } from '../game_objects/dungeon';
 
 import * as ecs from 'bitecs';
 
 import { Health, Killable } from '../systems/components';
 import { checkForKill, kill } from '../systems/killCheck';
-import { getWyvernAnimationSystem } from '../game_objects/animatedWyvern';
+import { animateWyverns } from '../game_objects/animatedWyvern';
+import { addEC, cleanup } from '../../util/initComponent';
 
 export class Game extends Scene {
     private world: ecs.World;
@@ -46,21 +47,32 @@ export class Game extends Scene {
         this.dungeon.createSpawner(this, 1236, 106, 10000, this.dungeon.createPack);
         this.dungeon.createSpawner(this, 1448, 212, 6000);
 
+        this.systemUpdates.push(createInputControlSystem(this.input.keyboard!));
+        this.systemUpdates.push(createWyvernDriverSystem(this.world));
+        this.systemUpdates.push(animateWyverns);
         this.systemUpdates.push(checkForKill);
         this.systemUpdates.push(kill);
-        this.systemUpdates.push(getWyvernAnimationSystem(this.world));
+        this.systemUpdates.push(cleanup);
         
         const wyverns = [
             createWyvern(
                 this.world,
                 playerGroup.create(512, 300, ''),
-                new WyvernDriver(),
                 playerAttacksGroup,
                 'medium'
             )
         ];
         wyverns[0].sprite.setDepth(10);
-        this.choosePlayer(wyverns[0]);
+        addEC(this.world, wyverns[0].eid, Controls, {
+            steer: undefined,
+            dash: false,
+            wingBlast: false,
+            breathe: false,
+        });
+
+        const obj = wyverns[0];
+        obj.sprite.postFX.addGlow(parseInt('#000000'.substring(1), 16), 2, 0.5, false, .1, 4);
+        this.camera.startFollow(obj.sprite);
     }
 
     update(time: number, delta: number): void {
@@ -68,19 +80,5 @@ export class Game extends Scene {
         for (const sysUpdate of this.systemUpdates) {
             sysUpdate(this.world, time, delta);
         }
-    }
-
-    private player: Wyvern;
-
-    private choosePlayer(obj: Wyvern) {
-        if (this.player) {
-            this.player.skillset.takeControls(); // Release previous controls.
-            this.player.sprite.postFX.clear();
-        }
-
-        createInputControls(this.input.keyboard!, obj.skillset);
-        obj.sprite.postFX.addGlow(parseInt('#000000'.substring(1), 16), 2, 0.5, false, .1, 4);
-        this.camera.startFollow(obj.sprite);
-        this.player = obj;
     }
 }
