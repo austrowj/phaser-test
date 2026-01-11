@@ -1,5 +1,7 @@
-import { AnimatedWyvern } from "./animatedWyvern";
 import { WyvernDriver } from "./wyvernDriver";
+import { ChangeAnimation, ChangeHeading, SpriteComponent, WyvernAnimation } from "./animatedWyvern";
+
+import * as ecs from 'bitecs';
 
 const sizeConfig = {
     'small':  { scale: 0.25, rate: 1.5, topSpeed: 300 },
@@ -10,33 +12,46 @@ const sizeConfig = {
 export type Wyvern = ReturnType<typeof createWyvern>;
 
 export function createWyvern(
-    visual: AnimatedWyvern,
+    world: ecs.World,
+    sprite: Phaser.GameObjects.Sprite,
     skillset: WyvernDriver,
     effectsGroup: Phaser.Physics.Arcade.Group,
     size: keyof typeof sizeConfig = 'medium',
 ) {
+    const eid = ecs.addEntity(world);
+
+    ecs.addComponent(world, eid, SpriteComponent);
+    SpriteComponent.sprite[eid] = sprite;
+
+    ecs.addComponent(world, eid, WyvernAnimation);
+
     // Make sure physics are configured.
-    const body = visual.sprite.body as Phaser.Physics.Arcade.Body;
+    const body = sprite.body as Phaser.Physics.Arcade.Body;
     body.setCircle(20, 108, 100);
-    visual.sprite.setScale(sizeConfig[size].scale);
+    sprite.setScale(sizeConfig[size].scale);
 
     // Adjust animation speed based on size.
-    visual.sprite.anims.timeScale = sizeConfig[size].rate;
+    sprite.anims.timeScale = sizeConfig[size].rate;
     skillset.setTimeRate(sizeConfig[size].rate);
 
     // Connect the controller to the animation driver and the physics body.
     skillset.comms
-        .when('setAnimation', (animation) => visual.setAnimation(animation))
-        .when('setHeading', (heading) => visual.setHeading(heading))
+        .when('setAnimation', (animation) => {
+            ecs.addComponent(world, eid, ChangeAnimation);
+            ChangeAnimation.animation[eid] = animation;
+        })
+        .when('setHeading', (heading) => {
+            ecs.addComponent(world, eid, ChangeHeading);
+            ChangeHeading.heading[eid] = heading;
+            
+        })
         .when('stop', () => body.setVelocity(0, 0))
         .when('go', (vector, scale) => body.setVelocity(
             vector.x * scale * sizeConfig[size].topSpeed,
             vector.y * scale * sizeConfig[size].topSpeed
         ))
-        .when('useSkill', (callback) => callback(visual.sprite, effectsGroup, visual.getCurrentHeading()));
+        .when('useSkill', (callback) => callback(sprite, effectsGroup, 'S'));
     
-    // Initialize animation state.
-    visual.setAnimation('Idle');
-    skillset.startTick(visual.sprite.scene);
-    return { sprite: visual.sprite, skillset, size };
+    skillset.startTick(sprite.scene);
+    return { sprite: sprite, skillset, size };
 }

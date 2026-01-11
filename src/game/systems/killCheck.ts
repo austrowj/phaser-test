@@ -1,5 +1,5 @@
 import * as ecs from 'bitecs';
-import { Health, Killable } from '../components/health.js';
+import { Health, Killable } from './components';
 
 export function checkForKill(world: ecs.World, _: number, delta: number) {
     for (const eid of ecs.query(world, [Health, Killable])) {

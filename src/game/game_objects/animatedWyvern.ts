@@ -1,48 +1,79 @@
 import { Heading } from '../world/parameters';
+import * as ecs from 'bitecs';
 
 // Designed for external use and/or reference.
 export type WyvernAnimation = keyof typeof animationData;
 export function load(scene: Phaser.Scene) { loadInternal(scene); }
 
-export class AnimatedWyvern {
+export const WyvernAnimation = {
+    heading: [] as Heading[],
+    animation: [] as WyvernAnimation[],
+    variant: [] as WyvernVariant[],
+};
 
-    public getCurrentHeading() { return this.currentHeading; }
-    public getCurrentAnimation() { return this.currentAnimation; }
+export const ChangeHeading = { heading: [] as Heading[] };
+export const ChangeAnimation = { animation: [] as WyvernAnimation[] };
+export const SpriteComponent = { sprite: [] as Phaser.GameObjects.Sprite[] };
 
-    private currentHeading: Heading = 'S';
-    private currentAnimation: WyvernAnimation;
+export function getWyvernAnimationSystem(world: ecs.World) {
 
-    constructor(
-        public sprite: Phaser.GameObjects.Sprite,
-        private variant: WyvernVariant) {
-            this.setAnimation('Idle');
+    ecs.observe(world, ecs.onAdd(SpriteComponent, WyvernAnimation), (eid) => {
+        console.log(`Wyvern added with eid ${eid}`);
+        WyvernAnimation.animation[eid] = 'Idle';
+        WyvernAnimation.heading[eid] = 'S';
+        WyvernAnimation.variant[eid] = 'earth';
+
+        SpriteComponent.sprite[eid].anims.play(animationKey(
+            WyvernAnimation.variant[eid],
+            WyvernAnimation.animation[eid],
+            WyvernAnimation.heading[eid],
+        ));
+    });
+
+    return () => {
+
+        for (var eid of ecs.query(world, [WyvernAnimation, SpriteComponent, ChangeHeading])) {
+            const sprite = SpriteComponent.sprite[eid];
+
+            if (WyvernAnimation.heading[eid] !== ChangeHeading.heading[eid]) {
+
+                WyvernAnimation.heading[eid] = ChangeHeading.heading[eid];
+                const curFrame = sprite.anims.currentFrame;
+                sprite.anims.play({
+                    key: animationKey(
+                        WyvernAnimation.variant[eid],
+                        WyvernAnimation.animation[eid],
+                        WyvernAnimation.heading[eid],
+                    ),
+                    // Have to check if last frame, otherwise phaser doesn't find the next frame correctly and crashes.
+                    startFrame: curFrame !== null && !curFrame.isLast ? curFrame.index : 0,
+                });
+            }
+
+            ecs.removeComponent(world, eid, ChangeHeading);
         }
 
-    private getKeyForSprite(): AnimationKey {
-        return `${this.variant}_${this.currentAnimation}_${this.currentHeading}`;
-    }
+        for (var eid of ecs.query(world, [WyvernAnimation, SpriteComponent, ChangeAnimation])) {
+            const sprite = SpriteComponent.sprite[eid];
 
-    public setHeading(heading: Heading) {
-        if (this.currentHeading !== heading) {
-            this.currentHeading = heading;
-            const curFrame = this.sprite.anims.currentFrame;
-            this.sprite.anims.play({
-                key: this.getKeyForSprite(),
-                // Have to check if last frame, otherwise phaser doesn't find the next frame correctly and crashes.
-                startFrame: curFrame !== null && !curFrame.isLast ? curFrame.index : 0,
-            });
+            WyvernAnimation.animation[eid] = ChangeAnimation.animation[eid];
+            sprite.anims.play(animationKey(
+                WyvernAnimation.variant[eid],
+                WyvernAnimation.animation[eid],
+                WyvernAnimation.heading[eid],
+            ), true);
+            ecs.removeComponent(world, eid, ChangeAnimation);
         }
-    }
-
-    public setAnimation(animation: WyvernAnimation) {
-        if (this.currentAnimation !== animation) {
-            this.currentAnimation = animation;
-            this.sprite.anims.play(this.getKeyForSprite());
-        }
-    }
+    };
 }
 
 // Internal definitions below.
+
+function animationKey(
+    variant: WyvernVariant,
+    animation: WyvernAnimation,
+    heading: Heading,
+): AnimationKey { return `${variant}_${animation}_${heading}`; }
 
 const HeadingIndexes = {
     W:  0,
