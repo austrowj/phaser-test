@@ -1,9 +1,13 @@
 import { Heading } from '../world/parameters';
-import { WyvernDriver } from './wyvernDriver';
 
-export function createInputControls(keyboard: Phaser.Input.Keyboard.KeyboardPlugin, skillset: WyvernDriver) {
+export function createInputControls(keyboard: Phaser.Input.Keyboard.KeyboardPlugin) {
 
-    const bridge = skillset.takeControls();
+    const bridge = {
+        steer: undefined as Heading | undefined,
+        dash: false,
+        wingBlast: false,
+        breathe: false,
+    };
 
     const headingKeyState = new Map<Phaser.Input.Keyboard.Key, number>([
         [keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W), 0x1],
@@ -19,6 +23,7 @@ export function createInputControls(keyboard: Phaser.Input.Keyboard.KeyboardPlug
                 key_state |= bit;
             }
         });
+        console.log(`Key state: ${key_state.toString(2)}`);
         return keyStateToDirection.get(key_state);
     }
 

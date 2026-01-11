@@ -1,39 +1,100 @@
 import { StateMachine } from '../../util/stateMachine';
 import { Broadcaster } from '../../util/broadcaster';
 import { Heading, HeadingVectors, xy } from '../world/parameters';
-import { WyvernAnimation } from './animatedWyvern';
+import { ChangeAnimation, ChangeHeading } from './animatedWyvern';
 
-type WyvernState = 'Idle' | 'Move' | 'Dash' | 'WingBlast' | 'BreathAttack';
+import * as ecs from 'bitecs';
+import { addSimpleEC } from '../../util/initComponent';
 
-class Controls {
-    constructor(
-        public steer: Heading | undefined = undefined,
-        public dash: boolean = false,
-        public wingBlast: boolean = false,
-        public breathe: boolean = false,
-    ) {}
+export type WyvernState = 'Idle' | 'Move' | 'Dash' | 'WingBlast' | 'BreathAttack';
+
+export const Controls = {
+    steer: [] as (Heading | undefined)[],
+    dash: [] as boolean[],
+    wingBlast: [] as boolean[],
+    breathe: [] as boolean[],
+}
+
+export const WyvernCommand = [] as ('stop' | 'move' | 'dash')[];
+
+export const Wyvern = {
+    timeRate: [] as number[],
+    state: [] as WyvernState[],
+    scale: [] as number[],
+    topSpeed: [] as number[],
+}
+
+export const ArcadeBody = [] as Phaser.Physics.Arcade.Body[];
+
+export function driveWyverns(world: ecs.World) {
+
+    for (const eid of ecs.query(world, [Wyvern, WyvernCommand]) ) {
+        switch (WyvernCommand[eid]) {
+
+            case 'stop':
+                Wyvern.state[eid] = 'Idle';
+                addSimpleEC(world, eid, ChangeAnimation, 'Idle');
+                if (ecs.hasComponent(world, eid, ArcadeBody)) { ArcadeBody[eid].setVelocity(0, 0); }
+
+                break;
+
+            case 'move':
+                Wyvern.state[eid] = 'Move';
+                addSimpleEC(world, eid, ChangeAnimation, 'Move')
+                if (ecs.hasComponent(world, eid, ArcadeBody) && ecs.hasComponent(world, eid, Heading)) {
+                    ArcadeBody[eid].setVelocity(...xy(Heading[eid], Wyvern.topSpeed[eid] / Wyvern.scale[eid]));
+                }
+
+                break;
+/*
+            case 'dash':
+                Wyvern.state[eid] = 'Dash';
+                addSimpleEC(world, eid, ChangeAnimation, 'Dash');
+                if (ecs.hasComponent(world, eid, ArcadeBody) && ecs.hasComponent(world, eid, Heading)) {
+                    ArcadeBody[eid].setVelocity(...xy(Heading[eid], Wyvern.topSpeed[eid] / Wyvern.scale[eid] * 6.0));
+                }*/
+        }
+        ecs.removeComponent(world, eid, WyvernCommand);
+    }
+
+    for (const eid of ecs.query(world, [Wyvern, Controls]) ) {
+        switch (Wyvern.state[eid]) {
+
+            case 'Idle':
+                //if (Wyvern.controls[eid]?.dash) { Wyvern.fsm[eid].go('Dash'); }
+                //else if (Wyvern.controls[eid]?.wingBlast) { Wyvern.fsm[eid].go('WingBlast'); }
+                //else if (Wyvern.controls[eid]?.breathe) { Wyvern.fsm[eid].go('BreathAttack'); }
+                if (Controls.steer[eid]) {
+                    addSimpleEC(world, eid, ChangeHeading, Controls.steer[eid]);
+                    addSimpleEC(world, eid, WyvernCommand, 'move');
+                }
+
+                break;
+
+            case 'Move':
+                //if (Wyvern.controls[eid]?.dash) { Wyvern.fsm[eid].go('Dash'); }
+                //else if (Wyvern.controls[eid]?.wingBlast) { Wyvern.fsm[eid].go('WingBlast'); }
+                //else if (Wyvern.controls[eid]?.breathe) { Wyvern.fsm[eid].go('BreathAttack'); }
+                if (Controls.steer[eid]) {
+                    addSimpleEC(world, eid, ChangeHeading, Controls.steer[eid]);
+                    addSimpleEC(world, eid, WyvernCommand, 'move');
+                }
+                else { addSimpleEC(world, eid, WyvernCommand, 'stop') }
+
+                break;
+        }
+    }
 }
 
 export class WyvernDriver {
 
     public comms = new Broadcaster<{
-        stop: () => void,
-        go: (vector: Phaser.Math.Vector2, scale: number) => void,
-        setHeading: (heading: Heading) => void,
-        setAnimation: (animation: WyvernAnimation) => void,
         useSkill: (callback: (
             sprite: Phaser.GameObjects.Sprite,
             effectsGroup: Phaser.Physics.Arcade.Group,
             heading: Heading,
         ) => void ) => void,
     }>();
-
-    private controlBridge = new Controls();
-
-    public takeControls() {
-        this.controlBridge = new Controls();
-        return this.controlBridge;
-    }
 
     public startTick(scene: Phaser.Scene) {
         this.fsm.startTick(scene);
@@ -46,38 +107,13 @@ export class WyvernDriver {
 
     private fsm: StateMachine<WyvernState>;
 
-    constructor() {
+    constructor(world: ecs.World, eid: number) {
 
         this.fsm = new StateMachine<WyvernState>('Idle')
-
-            .when('enter_Idle', () => {
-                this.comms.broadcast('setAnimation', 'Idle');
-                this.comms.broadcast('stop');
-            })
-            .when('tick_Idle', () => {
-                if (this.controlBridge.dash) { this.fsm.go('Dash'); }
-                else if (this.controlBridge.wingBlast) { this.fsm.go('WingBlast'); }
-                else if (this.controlBridge.breathe) { this.fsm.go('BreathAttack'); }
-                else if (this.controlBridge.steer) { this.fsm.go('Move'); }
-            })
-            
-            .when('enter_Move', () => this.comms.broadcast('setAnimation', 'Move'))
-            .when('leave_Move', () => this.comms.broadcast('stop'))
-            .when('tick_Move', () => {
-                if (this.controlBridge.dash) { this.fsm.go('Dash'); }
-                else if (this.controlBridge.wingBlast) { this.fsm.go('WingBlast'); }
-                else if (this.controlBridge.breathe) { this.fsm.go('BreathAttack'); }
-                else if (this.controlBridge.steer) {
-                    this.comms.broadcast('setHeading', this.controlBridge.steer);
-                    this.comms.broadcast('go', HeadingVectors[this.controlBridge.steer], 1.0);
-                }
-                else { this.fsm.go('Idle'); }
-            })
             
             .when('enter_Dash', () => {
-                this.comms.broadcast('setAnimation', 'Dash');
-                this.comms.broadcast('useSkill', (sprite, _, heading) => {
-                    const headingVector = HeadingVectors[heading];
+                addSimpleEC(world, eid, WyvernCommand, 'dash');
+                this.comms.broadcast('useSkill', (sprite) => {
                     sprite.scene.tweens.add({
                         targets: sprite,
                         // Make wyvern disappear then reappear at high speed.
@@ -87,14 +123,14 @@ export class WyvernDriver {
                         yoyo: true,
                         onYoyo: () => {
                             // On yoyo (halfway point), set high speed.
-                            this.comms.broadcast('go', headingVector, 6.0);
+                            addSimpleEC(world, eid, WyvernCommand, 'dash');
                         }
                     });
-                    sprite.scene.time.delayedCall(500, () => this.fsm.go('Idle'), [], this);
+                    sprite.scene.time.delayedCall(500, () => addSimpleEC(world, eid, WyvernCommand, 'stop'));
                 });
             })
             .when('enter_WingBlast', () => {
-                this.comms.broadcast('setAnimation', 'WingBlast');
+                addSimpleEC(world, eid, ChangeAnimation, 'WingBlast');
                 this.comms.broadcast('useSkill', (sprite, effectsGroup, heading) => {
                     const blast = effectsGroup.create(sprite.x, sprite.y, 'flares', 'white', false, false);
                     const body = blast.body! as Phaser.Physics.Arcade.Body;
@@ -115,7 +151,10 @@ export class WyvernDriver {
                 });
             })
             .when('enter_BreathAttack', () => {
-                this.comms.broadcast('setAnimation', 'BreathAttack');
+
+                addSimpleEC(world, eid, WyvernCommand, 'stop');
+                addSimpleEC(world, eid, ChangeAnimation, 'BreathAttack');
+
                 this.comms.broadcast('useSkill', (sprite, _, heading) => {
 
                     const headingVector = HeadingVectors[heading];
@@ -154,10 +193,17 @@ export class WyvernDriver {
                     });
                 });
             })
+/*
             .when('tick_BreathAttack', () => {
-                if (this.controlBridge.dash) { this.fsm.go('Dash'); }
-                else if (!this.controlBridge.breathe) { this.fsm.go('Idle'); }
-            })
+                if (this.controlBridge.dash) {
+                    addSimpleEC(world, eid, WyvernCommand, 'dash');
+                    this.fsm.go('Dash');
+                }
+                else if (!this.controlBridge.breathe) {
+                    addSimpleEC(world, eid, WyvernCommand, 'stop');
+                    this.fsm.go('Idle');
+                }
+            })*/
         ;
 
     }
