@@ -2,7 +2,7 @@ import { Wyvern } from "./wyvernDriver";
 import { WyvernAnimation } from "./animatedWyvern";
 
 import * as ecs from 'bitecs';
-import { addEC, Initialize } from "../../util/initComponent";
+import { addEC } from "../../util/initComponent";
 
 const sizeConfig = {
     'small':  { scale: 0.25, rate: 1.5, topSpeed: 100 },
@@ -25,8 +25,9 @@ export function createWyvern(
     body.setCircle(20, 108, 100);
     sprite.setScale(sizeConfig[size].scale);
 
-    addEC(world, eid, WyvernAnimation, {animation: 'Idle', variant: 'earth', heading: 'S', sprite: sprite});
+    addEC(world, eid, WyvernAnimation, {state: 'Idle', variant: 'earth', heading: 'S'});
     addEC(world, eid, Wyvern, {
+        variant: 'earth',
         state: 'Idle',
         timeRate: sizeConfig[size].rate,
         scale: sizeConfig[size].scale,
@@ -41,6 +42,6 @@ export function createWyvern(
     // Adjust animation speed based on size.
     sprite.anims.timeScale = sizeConfig[size].rate;
 
-    ecs.addComponent(world, eid, Initialize);
+    //ecs.addComponent(world, eid, Initialize);
     return { eid, sprite: sprite, size };
 }

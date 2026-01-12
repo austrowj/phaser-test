@@ -1,9 +1,11 @@
 import { Heading, HeadingVectors, xy } from '../world/parameters';
-import { ChangeAnimation, ChangeHeading } from './animatedWyvern';
 
 import * as ecs from 'bitecs';
 import { addSimpleEC } from '../../util/initComponent';
-import { makeWindBlast, makeWindBlastForking } from './skillEffects';
+import { makeWindBlastForking } from './skillEffects';
+
+export const WyvernVariant = ['earth', 'air', 'fire', 'water'] as const;
+export type WyvernVariant = typeof WyvernVariant[number];
 
 export type WyvernState = 'Idle' | 'Move' | 'Dash' | 'WingBlast' | 'BreathAttack';
 
@@ -17,6 +19,7 @@ export const Controls = {
 export const WyvernCommand = [] as ('stop' | 'dash' | 'wingblast' | 'breathattack')[];
 
 export const Wyvern = {
+    variant: [] as WyvernVariant[],
     timeRate: [] as number[],
     state: [] as WyvernState[],
     scale: [] as number[],
@@ -34,7 +37,6 @@ export function createWyvernDriverSystem(world: ecs.World) {
 
     const steer = (eid: number, h: Heading) => {
         Wyvern.heading[eid] = h;
-        addSimpleEC(world, eid, ChangeHeading, h);
         Wyvern.body[eid].setVelocity(...xy(h, Wyvern.topSpeed[eid] / Wyvern.scale[eid]));
     }
 
@@ -51,7 +53,6 @@ export function createWyvernDriverSystem(world: ecs.World) {
 
                 case 'stop':
                     Wyvern.state[eid] = 'Idle';
-                    addSimpleEC(world, eid, ChangeAnimation, 'Idle');
                     Wyvern.body[eid].setVelocity(0, 0);
                     
                     if (ecs.hasComponent(world, eid, ActiveEffect)) {
@@ -62,7 +63,6 @@ export function createWyvernDriverSystem(world: ecs.World) {
                 case 'dash':
                     Wyvern.body[eid].setVelocity(0, 0);
                     Wyvern.state[eid] = 'Dash';
-                    addSimpleEC(world, eid, ChangeAnimation, 'Dash');
 
                     sprite.scene.tweens.add({
                         targets: sprite,
@@ -82,7 +82,6 @@ export function createWyvernDriverSystem(world: ecs.World) {
                 case 'wingblast':
                     Wyvern.body[eid].setVelocity(0, 0);
                     Wyvern.state[eid] = 'WingBlast';
-                    addSimpleEC(world, eid, ChangeAnimation, 'WingBlast');
                     sprite.scene.time.delayedCall(140 / timeRate, () => makeWindBlastForking(sprite, heading, effectsGroup) );
                     sprite.scene.time.delayedCall(500 / timeRate, () => addSimpleEC(world, eid, WyvernCommand, 'stop') );
                     break;
@@ -90,7 +89,6 @@ export function createWyvernDriverSystem(world: ecs.World) {
                 case 'breathattack':
                     Wyvern.body[eid].setVelocity(0, 0);
                     Wyvern.state[eid] = 'BreathAttack';
-                    addSimpleEC(world, eid, ChangeAnimation, 'BreathAttack');
 
                     //const effectEID = ecs.addComponent(world, eid, ActiveEffect);
 
@@ -138,7 +136,6 @@ export function createWyvernDriverSystem(world: ecs.World) {
                     }
                     else if (Controls.steer[eid]) {
                         Wyvern.state[eid] = 'Move';
-                        addSimpleEC(world, eid, ChangeAnimation, 'Move');
                         steer(eid, Controls.steer[eid]);
                     }
                     break;

@@ -31,10 +31,11 @@ export function addTagEC<T extends Record<string, never>>( // Component with no 
     ecs.addComponent(world, eid, component);
     return eid;
 }
-
+/*
 export const Initialize = {};
 export function cleanup(world: ecs.World) {
     for (const eid of ecs.query(world, [Initialize])) {
         ecs.removeComponent(world, eid, Initialize);
     }
 }
+*/

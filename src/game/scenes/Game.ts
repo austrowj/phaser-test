@@ -1,17 +1,16 @@
 import { Scene } from 'phaser';
-import { createInputControlSystem } from '../game_objects/wyvernInputController';
-import { Controls, createWyvernDriverSystem } from '../game_objects/wyvernDriver';
+import { Controls } from '../game_objects/wyvernDriver';
 import { createWyvern } from '../game_objects/wyvern';
 import { Dungeon } from '../game_objects/dungeon';
 
 import * as ecs from 'bitecs';
 
 import { Health, Killable } from '../systems/components';
-import { checkForKill, kill } from '../systems/killCheck';
-import { animateWyverns } from '../game_objects/animatedWyvern';
-import { addEC, cleanup } from '../../util/initComponent';
+import { addEC } from '../../util/initComponent';
+import { createAllSystems } from '../systems/allSystems';
 
 export class Game extends Scene {
+
     private world: ecs.World;
     private systemUpdates: ((world: ecs.World, time: number, delta: number) => void)[] = [];
     private camera: Phaser.Cameras.Scene2D.Camera;
@@ -21,7 +20,9 @@ export class Game extends Scene {
     constructor () { super('Game'); }
 
     create () {
-        this.world = ecs.createWorld();
+        const { world, systemUpdates } = createAllSystems(this);
+        this.world = world;
+        this.systemUpdates = systemUpdates;
         this.camera = this.cameras.main;
         this.camera.setBackgroundColor('#a1a1a1');
 
@@ -54,13 +55,6 @@ export class Game extends Scene {
         //this.dungeon.createSpawner(this, 1024, 0, 6000);
         this.dungeon.createSpawner(this, 1236, 106, 10000, this.dungeon.createPack);
         this.dungeon.createSpawner(this, 1448, 212, 6000);
-
-        this.systemUpdates.push(createInputControlSystem(this.input.keyboard!));
-        this.systemUpdates.push(createWyvernDriverSystem(this.world));
-        this.systemUpdates.push(animateWyverns);
-        this.systemUpdates.push(checkForKill);
-        this.systemUpdates.push(kill);
-        this.systemUpdates.push(cleanup);
         
         const wyverns = [
             createWyvern(
