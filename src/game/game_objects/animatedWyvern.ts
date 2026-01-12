@@ -2,6 +2,7 @@
 import { Heading } from '../world/parameters';
 import * as ecs from 'bitecs';
 import { Wyvern, WyvernState, WyvernVariant } from './wyvernDriver';
+import { SpriteOf } from '../systems/spriteManager';
 
 // Designed for external use and/or reference.
 export function load(scene: Phaser.Scene) { loadInternal(scene); }
@@ -13,50 +14,54 @@ export const WyvernAnimation = {
 };
 
 export function syncWyvernAnimation(world: ecs.World) {
+    for (const eid of ecs.query(world, [Wyvern, WyvernAnimation])) {
+        for (const spriteEID of ecs.query(world, [SpriteOf(eid)])) {
+            syncSprite(eid, SpriteOf(spriteEID)[eid]);
+        }
+    }
+}
 
-    for (var eid of ecs.query(world, [Wyvern, WyvernAnimation])) {
-        const sprite = Wyvern.sprite[eid];
+function syncSprite(eid: number, sprite: Phaser.GameObjects.Sprite) {
 
-        if (!sprite.anims.isPlaying) {
-            sprite.anims.play(animationKey(
+    if (!sprite.anims.isPlaying) {
+        sprite.anims.timeScale = Wyvern.timeRate[eid];
+        sprite.anims.play(animationKey(
+            WyvernAnimation.variant[eid],
+            WyvernAnimation.state[eid],
+            WyvernAnimation.heading[eid],
+        ));
+    }
+
+    if (WyvernAnimation.heading[eid] !== Wyvern.heading[eid]) {
+        WyvernAnimation.heading[eid] = Wyvern.heading[eid];
+        const curFrame = sprite.anims.currentFrame;
+        sprite.anims.play({
+            key: animationKey(
                 WyvernAnimation.variant[eid],
                 WyvernAnimation.state[eid],
                 WyvernAnimation.heading[eid],
-            ));
-        }
-    
-        if (WyvernAnimation.heading[eid] !== Wyvern.heading[eid]) {
+            ),
+            // Have to check if last frame, otherwise phaser doesn't find the next frame correctly and crashes.
+            startFrame: curFrame !== null && !curFrame.isLast ? curFrame.index : 0,
+        });
+    }
 
-            WyvernAnimation.heading[eid] = Wyvern.heading[eid];
-            const curFrame = sprite.anims.currentFrame;
-            sprite.anims.play({
-                key: animationKey(
-                    WyvernAnimation.variant[eid],
-                    WyvernAnimation.state[eid],
-                    WyvernAnimation.heading[eid],
-                ),
-                // Have to check if last frame, otherwise phaser doesn't find the next frame correctly and crashes.
-                startFrame: curFrame !== null && !curFrame.isLast ? curFrame.index : 0,
-            });
-        }
+    if (WyvernAnimation.state[eid] !== Wyvern.state[eid]) {
+        WyvernAnimation.state[eid] = Wyvern.state[eid];
+        sprite.anims.play(animationKey(
+            WyvernAnimation.variant[eid],
+            WyvernAnimation.state[eid],
+            WyvernAnimation.heading[eid],
+        ), true);
+    }
 
-        if (WyvernAnimation.state[eid] !== Wyvern.state[eid]) {
-            WyvernAnimation.state[eid] = Wyvern.state[eid];
-            sprite.anims.play(animationKey(
-                WyvernAnimation.variant[eid],
-                WyvernAnimation.state[eid],
-                WyvernAnimation.heading[eid],
-            ), true);
-        }
-
-        if (WyvernAnimation.variant[eid] !== Wyvern.variant[eid]) {
-            WyvernAnimation.variant[eid] = Wyvern.variant[eid];
-            sprite.anims.play(animationKey(
-                WyvernAnimation.variant[eid],
-                WyvernAnimation.state[eid],
-                WyvernAnimation.heading[eid],
-            ), true);
-        }
+    if (WyvernAnimation.variant[eid] !== Wyvern.variant[eid]) {
+        WyvernAnimation.variant[eid] = Wyvern.variant[eid];
+        sprite.anims.play(animationKey(
+            WyvernAnimation.variant[eid],
+            WyvernAnimation.state[eid],
+            WyvernAnimation.heading[eid],
+        ), true);
     }
 }
 
