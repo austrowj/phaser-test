@@ -7,13 +7,11 @@ import { checkForKill, kill } from './killCheck';
 
 export function createAllSystems(scene: Phaser.Scene) {
     const world = ecs.createWorld();
-
-    const systemUpdates = [] as ((world: ecs.World, time: number, delta: number) => void)[];
-    systemUpdates.push(createInputControlSystem(scene.input.keyboard!));
-    systemUpdates.push(createWyvernDriverSystem(world));
-    systemUpdates.push(syncWyvernAnimation);
-    systemUpdates.push(checkForKill);
-    systemUpdates.push(kill);
-    //systemUpdates.push(cleanup);
-    return { world, systemUpdates };
+    return { world, systems: [
+        createInputControlSystem(scene.input.keyboard!),
+        createWyvernDriverSystem(world),
+        syncWyvernAnimation,
+        checkForKill,
+        kill,
+    ]};
 }

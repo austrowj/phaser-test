@@ -20,9 +20,9 @@ export class Game extends Scene {
     constructor () { super('Game'); }
 
     create () {
-        const { world, systemUpdates } = createAllSystems(this);
+        const { world, systems } = createAllSystems(this);
         this.world = world;
-        this.systemUpdates = systemUpdates;
+        this.systemUpdates = systems;
         this.camera = this.cameras.main;
         this.camera.setBackgroundColor('#a1a1a1');
 

@@ -7,7 +7,7 @@ import { makeWindBlastForking } from './skillEffects';
 export const WyvernVariant = ['earth', 'air', 'fire', 'water'] as const;
 export type WyvernVariant = typeof WyvernVariant[number];
 
-export type WyvernState = 'Idle' | 'Move' | 'Dash' | 'WingBlast' | 'BreathAttack';
+export type WyvernState = 'Idle' | 'Move' | 'Dash' | 'WingBlast' | 'BreathAttack' | 'Slam';
 
 export const Controls = {
     steer: [] as (Heading | undefined)[],

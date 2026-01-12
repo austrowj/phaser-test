@@ -159,7 +159,7 @@ function loadInternal(scene: Phaser.Scene) {
 // The actual animation data.
 
 // Need a funky IIFE to create the animation data object with proper typing.
-const animationData = (<T extends Record<string, AnimationParams>>(data: T) => data)({
+const animationData = (<T extends Record<WyvernState, AnimationParams>>(data: T) => data)({
     Idle: {
         base: "Hover",
         animConfig: {
