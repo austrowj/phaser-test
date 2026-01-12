@@ -3,6 +3,7 @@ import { ChangeAnimation, ChangeHeading } from './animatedWyvern';
 
 import * as ecs from 'bitecs';
 import { addSimpleEC } from '../../util/initComponent';
+import { makeWindBlast, makeWindBlastForking } from './skillEffects';
 
 export type WyvernState = 'Idle' | 'Move' | 'Dash' | 'WingBlast' | 'BreathAttack';
 
@@ -82,24 +83,8 @@ export function createWyvernDriverSystem(world: ecs.World) {
                     Wyvern.body[eid].setVelocity(0, 0);
                     Wyvern.state[eid] = 'WingBlast';
                     addSimpleEC(world, eid, ChangeAnimation, 'WingBlast');
-
-                    const blast = effectsGroup.create(sprite.x, sprite.y, 'flares', 'white', false, false);
-                    const body = blast.body! as Phaser.Physics.Arcade.Body;
-                    blast.setScale(0.5);
-                    body.setCircle(30, blast.width/2 * blast.scaleX, blast.height/2 * blast.scaleY);
-
-                    sprite.scene.time.delayedCall(140 / timeRate, () => {
-                        blast.visible = true;
-                        blast.active = true;
-                        body.setVelocity(...xy(heading, 800));
-                    });
-
-                    sprite.scene.time.delayedCall(500 / timeRate, () => {
-                        addSimpleEC(world, eid, WyvernCommand, 'stop');
-                    });
-                    sprite.scene.time.delayedCall(2000 / timeRate, () => {
-                        blast.destroy();
-                    });
+                    sprite.scene.time.delayedCall(140 / timeRate, () => makeWindBlastForking(sprite, heading, effectsGroup) );
+                    sprite.scene.time.delayedCall(500 / timeRate, () => addSimpleEC(world, eid, WyvernCommand, 'stop') );
                     break;
                     
                 case 'breathattack':

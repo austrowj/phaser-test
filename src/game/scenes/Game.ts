@@ -32,8 +32,16 @@ export class Game extends Scene {
         const playerAttacksGroup = this.physics.add.group();
         const playerGroup = this.physics.add.group();
 
-        this.physics.add.collider(playerAttacksGroup, this.dungeon.monsters, (attackSprite, _) => {
+        this.physics.add.collider(playerAttacksGroup, this.dungeon.monsters, (attackSprite, monsterSprite) => {
+            const attackBody = (attackSprite as Phaser.GameObjects.Sprite).body as Phaser.Physics.Arcade.Body;
+            const monsterBody = (monsterSprite as Phaser.GameObjects.Sprite).body as Phaser.Physics.Arcade.Body;
+            if (monsterBody instanceof Phaser.Physics.Arcade.Body) {
+                monsterBody.velocity.add(
+                    new Phaser.Math.Vector2().copy(monsterBody.center).subtract(attackBody.center).normalize().scale(200)
+                )
+            }
             attackSprite.destroy();
+            //console.log((attackSprite as Phaser.GameObjects.Sprite).data.get('originator')); // it just works
         });
 
         const player = ecs.addEntity(this.world)

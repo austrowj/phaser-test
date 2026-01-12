@@ -10,6 +10,12 @@ export const HeadingVectors = {
     NW: new Phaser.Math.Vector2(-2, -1).normalize(),
 } as const;
 
+export function rotateHeading(heading: Heading, steps: -4 | -3 | -2 | -1 | 0| 1 | 2 | 3 | 4): Heading {
+    const headings: Heading[] = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    const index = headings.indexOf(heading);
+    return headings[(index + steps + headings.length) % headings.length];
+}
+
 export const Step = 32;
 
 export function xy(heading: Heading, distance: number, origin?: [number, number]): [number, number] {
