@@ -9,34 +9,35 @@ export function load(scene: Phaser.Scene) { loadInternal(scene); }
 export const WyvernAnimation = {
     animation: [] as WyvernAnimation[],
     variant: [] as WyvernVariant[],
+    heading: [] as Heading[],
+    sprite: [] as Phaser.GameObjects.Sprite[],
 };
 
 export const ChangeHeading = [] as Heading[];
 export const ChangeAnimation = [] as WyvernAnimation[];
-export const SpriteComponent = [] as Phaser.GameObjects.Sprite[];
 
 export function animateWyverns(world: ecs.World) {
 
-    for (const eid of ecs.query(world, [WyvernAnimation, SpriteComponent, Heading, Initialize])) {
-        SpriteComponent[eid].anims.play(animationKey(
+    for (const eid of ecs.query(world, [WyvernAnimation, Initialize])) {
+        WyvernAnimation.sprite[eid].anims.play(animationKey(
             WyvernAnimation.variant[eid],
             WyvernAnimation.animation[eid],
-            Heading[eid],
+            WyvernAnimation.heading[eid],
         ));
     }
 
-    for (var eid of ecs.query(world, [WyvernAnimation, SpriteComponent, ChangeHeading])) {
-        const sprite = SpriteComponent[eid];
+    for (var eid of ecs.query(world, [WyvernAnimation, ChangeHeading])) {
+        const sprite = WyvernAnimation.sprite[eid];
 
-        if (Heading[eid] !== ChangeHeading[eid]) {
+        if (WyvernAnimation.heading[eid] !== ChangeHeading[eid]) {
 
-            Heading[eid] = ChangeHeading[eid];
+            WyvernAnimation.heading[eid] = ChangeHeading[eid];
             const curFrame = sprite.anims.currentFrame;
             sprite.anims.play({
                 key: animationKey(
                     WyvernAnimation.variant[eid],
                     WyvernAnimation.animation[eid],
-                    Heading[eid],
+                    WyvernAnimation.heading[eid],
                 ),
                 // Have to check if last frame, otherwise phaser doesn't find the next frame correctly and crashes.
                 startFrame: curFrame !== null && !curFrame.isLast ? curFrame.index : 0,
@@ -46,14 +47,14 @@ export function animateWyverns(world: ecs.World) {
         ecs.removeComponent(world, eid, ChangeHeading);
     }
 
-    for (var eid of ecs.query(world, [WyvernAnimation, SpriteComponent, ChangeAnimation])) {
-        const sprite = SpriteComponent[eid];
+    for (var eid of ecs.query(world, [WyvernAnimation, ChangeAnimation])) {
+        const sprite = WyvernAnimation.sprite[eid];
 
         WyvernAnimation.animation[eid] = ChangeAnimation[eid];
         sprite.anims.play(animationKey(
             WyvernAnimation.variant[eid],
             WyvernAnimation.animation[eid],
-            Heading[eid],
+            WyvernAnimation.heading[eid],
         ), true);
         ecs.removeComponent(world, eid, ChangeAnimation);
     }

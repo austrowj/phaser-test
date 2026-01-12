@@ -10,8 +10,6 @@ export const HeadingVectors = {
     NW: new Phaser.Math.Vector2(-2, -1).normalize(),
 } as const;
 
-export const Heading = [] as Heading[]; // For ECS
-
 export const Step = 32;
 
 export function xy(heading: Heading, distance: number, origin?: [number, number]): [number, number] {

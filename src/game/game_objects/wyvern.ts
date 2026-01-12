@@ -1,9 +1,8 @@
-import { ArcadeBody, Wyvern } from "./wyvernDriver";
-import { SpriteComponent, WyvernAnimation } from "./animatedWyvern";
+import { Wyvern } from "./wyvernDriver";
+import { WyvernAnimation } from "./animatedWyvern";
 
 import * as ecs from 'bitecs';
-import { Heading } from "../world/parameters";
-import { addEC, addSimpleEC, Initialize } from "../../util/initComponent";
+import { addEC, Initialize } from "../../util/initComponent";
 
 const sizeConfig = {
     'small':  { scale: 0.25, rate: 1.5, topSpeed: 100 },
@@ -21,22 +20,23 @@ export function createWyvern(
 ) {
     const eid = ecs.addEntity(world);
 
-    addSimpleEC(world, eid, Heading, 'S');
-    addSimpleEC(world, eid, SpriteComponent, sprite);
-    addEC(world, eid, WyvernAnimation, {animation: 'Idle', variant: 'earth'});
+    // Make sure physics are configured.
+    const body = sprite.body as Phaser.Physics.Arcade.Body;
+    body.setCircle(20, 108, 100);
+    sprite.setScale(sizeConfig[size].scale);
+
+    addEC(world, eid, WyvernAnimation, {animation: 'Idle', variant: 'earth', heading: 'S', sprite: sprite});
     addEC(world, eid, Wyvern, {
         state: 'Idle',
         timeRate: sizeConfig[size].rate,
         scale: sizeConfig[size].scale,
         topSpeed: sizeConfig[size].topSpeed,
         effectsGroup: effectsGroup,
+        sprite: sprite,
+        body: body,
+        heading: 'S',
+        particles: null,
     });
-
-    // Make sure physics are configured.
-    const body = sprite.body as Phaser.Physics.Arcade.Body;
-    body.setCircle(20, 108, 100);
-    sprite.setScale(sizeConfig[size].scale);
-    addSimpleEC(world, eid, ArcadeBody, body);
 
     // Adjust animation speed based on size.
     sprite.anims.timeScale = sizeConfig[size].rate;
