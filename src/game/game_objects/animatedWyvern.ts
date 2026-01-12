@@ -1,44 +1,72 @@
-import { Communicator } from '../../util/communicator';
+import { Initialize } from '../../util/initComponent';
 import { Heading } from '../world/parameters';
+import * as ecs from 'bitecs';
 
 // Designed for external use and/or reference.
 export type WyvernAnimation = keyof typeof animationData;
 export function load(scene: Phaser.Scene) { loadInternal(scene); }
 
-export class WyvernAnimationDriver {
+export const WyvernAnimation = {
+    animation: [] as WyvernAnimation[],
+    variant: [] as WyvernVariant[],
+    heading: [] as Heading[],
+    sprite: [] as Phaser.GameObjects.Sprite[],
+};
 
-    public comms = new Communicator<{
-        change: (animationKey: AnimationKey) => void,
-        //headingChange: (heading: Heading) => void,
-        //animationChange: (animation: WyvernAnimation) => void,
-    }>();
+export const ChangeHeading = [] as Heading[];
+export const ChangeAnimation = [] as WyvernAnimation[];
 
-    public getCurrentHeading() { return this.currentHeading; }
-    public getCurrentAnimation() { return this.currentAnimation; }
+export function animateWyverns(world: ecs.World) {
 
-    private currentHeading: Heading = 'S';
-    private currentAnimation: WyvernAnimation;
-
-    constructor(private variant: Variant) { this.setAnimation('Idle'); }
-
-    private getAnimationKey(): AnimationKey {
-        return `${this.variant}_${this.currentAnimation}_${this.currentHeading}`;
+    for (const eid of ecs.query(world, [WyvernAnimation, Initialize])) {
+        WyvernAnimation.sprite[eid].anims.play(animationKey(
+            WyvernAnimation.variant[eid],
+            WyvernAnimation.animation[eid],
+            WyvernAnimation.heading[eid],
+        ));
     }
 
-    public setHeading(heading: Heading) {
-        this.currentHeading = heading;
-        this.comms.send('change', this.getAnimationKey());
-        //this.comms.send('headingChange', heading);
+    for (var eid of ecs.query(world, [WyvernAnimation, ChangeHeading])) {
+        const sprite = WyvernAnimation.sprite[eid];
+
+        if (WyvernAnimation.heading[eid] !== ChangeHeading[eid]) {
+
+            WyvernAnimation.heading[eid] = ChangeHeading[eid];
+            const curFrame = sprite.anims.currentFrame;
+            sprite.anims.play({
+                key: animationKey(
+                    WyvernAnimation.variant[eid],
+                    WyvernAnimation.animation[eid],
+                    WyvernAnimation.heading[eid],
+                ),
+                // Have to check if last frame, otherwise phaser doesn't find the next frame correctly and crashes.
+                startFrame: curFrame !== null && !curFrame.isLast ? curFrame.index : 0,
+            });
+        }
+
+        ecs.removeComponent(world, eid, ChangeHeading);
     }
 
-    public setAnimation(animation: WyvernAnimation) {
-        this.currentAnimation = animation;
-        this.comms.send('change', this.getAnimationKey());
-        //this.comms.send('animationChange', animation);
+    for (var eid of ecs.query(world, [WyvernAnimation, ChangeAnimation])) {
+        const sprite = WyvernAnimation.sprite[eid];
+
+        WyvernAnimation.animation[eid] = ChangeAnimation[eid];
+        sprite.anims.play(animationKey(
+            WyvernAnimation.variant[eid],
+            WyvernAnimation.animation[eid],
+            WyvernAnimation.heading[eid],
+        ), true);
+        ecs.removeComponent(world, eid, ChangeAnimation);
     }
 }
 
 // Internal definitions below.
+
+function animationKey(
+    variant: WyvernVariant,
+    animation: WyvernAnimation,
+    heading: Heading,
+): AnimationKey { return `${variant}_${animation}_${heading}`; }
 
 const HeadingIndexes = {
     W:  0,
@@ -53,9 +81,9 @@ const HeadingIndexes = {
 type WyvernFrameIndex = typeof HeadingIndexes[keyof typeof HeadingIndexes];
 
 const Variants = ['earth', 'air', 'fire', 'water'] as const;
-type Variant = typeof Variants[number];
+export type WyvernVariant = typeof Variants[number];
 
-type AnimationKey = `${Variant}_${WyvernAnimation}_${Heading}`;
+type AnimationKey = `${WyvernVariant}_${WyvernAnimation}_${Heading}`;
 
 const BaseBehaviors = {
     Hover:   { index: 0 },
@@ -83,7 +111,7 @@ type AnimationParams = {
 
 function createAnimationConfigs(
     key: string,
-    variant: Variant,
+    variant: WyvernVariant,
     params: AnimationParams
 ): Phaser.Types.Animations.Animation[] {
 
@@ -149,7 +177,7 @@ const animationData = (<T extends Record<string, AnimationParams>>(data: T) => d
     Move: {
         base: "Fly",
         animConfig: {
-            frameRate: 12,
+            frameRate: 10,
             repeat: -1,
         },
         framesTemplate: [

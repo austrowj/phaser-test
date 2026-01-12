@@ -1,9 +1,8 @@
 import { Heading } from '../world/parameters';
-import { WyvernBasicSkillset } from './wyvernBasicSkillset';
+import * as ecs from 'bitecs';
+import { Controls } from './wyvernDriver';
 
-export function createInputControls(keyboard: Phaser.Input.Keyboard.KeyboardPlugin, skillset: WyvernBasicSkillset) {
-
-    const bridge = skillset.takeControls();
+export function createInputControlSystem(keyboard: Phaser.Input.Keyboard.KeyboardPlugin) {
 
     const headingKeyState = new Map<Phaser.Input.Keyboard.Key, number>([
         [keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W), 0x1],
@@ -11,33 +10,26 @@ export function createInputControls(keyboard: Phaser.Input.Keyboard.KeyboardPlug
         [keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S), 0x4],
         [keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D), 0x8]
     ]);
+    const dashKey = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.PERIOD);
+    const wingBlastKey = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.COMMA);
+    const breatheKey = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    
+    return (world: ecs.World) => {
+        for (const eid of ecs.query(world, [Controls])) {
 
-    function updateAimFromKeyState() {
-        var key_state = 0;
-        headingKeyState.forEach((bit, key) => {
-            if (key.isDown) {
-                key_state |= bit;
-            }
-        });
-        return keyStateToDirection.get(key_state);
+            var key_state = 0;
+            headingKeyState.forEach((bit, key) => {
+                if (key.isDown) {
+                    key_state |= bit;
+                }
+            });
+            Controls.steer[eid] = keyStateToDirection.get(key_state);
+
+            Controls.dash[eid] = dashKey.isDown;
+            Controls.wingBlast[eid] = wingBlastKey.isDown;
+            Controls.breathe[eid] = breatheKey.isDown;
+        }
     }
-
-    headingKeyState.forEach((_, key) => key
-        .on('down', () => { bridge.steer = updateAimFromKeyState(); })
-        .on('up',   () => { bridge.steer = updateAimFromKeyState(); })
-    );
-
-    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.PERIOD)
-        .on('down', () => bridge.dash = true)
-        .on('up',   () => bridge.dash = false);
-    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.COMMA)
-        .on('down', () => bridge.wingBlast = true)
-        .on('up',   () => bridge.wingBlast = false);
-    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
-        .on('down', () => bridge.breathe = true)
-        .on('up',   () => bridge.breathe = false);
-
-    return bridge;
 }
 
 const keyStateToDirection: Map<number, Heading> = new Map([

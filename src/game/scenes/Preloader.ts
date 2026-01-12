@@ -1,17 +1,12 @@
 import { Scene } from 'phaser';
 import { load as loadDungeon } from '../game_objects/dungeon';
-import { load as loadWyverns } from '../game_objects/wyvernAnimationDriver';
+import { load as loadWyverns } from '../game_objects/animatedWyvern';
 import * as spriteMaps from '../data/spritesheetMaps';
 
-export class Preloader extends Scene
-{
-    constructor ()
-    {
-        super('Preloader');
-    }
+export class Preloader extends Scene {
+    constructor () { super('Preloader'); }
 
-    init ()
-    {
+    init () {
         //  We loaded this image in our Boot Scene, so we can display it here
         this.add.image(512, 384, 'background');
 
@@ -30,8 +25,7 @@ export class Preloader extends Scene
         });
     }
 
-    preload ()
-    {
+    preload () {
         this.load.setBaseURL('./');
         this.load.setPath('assets');
 
@@ -53,12 +47,11 @@ export class Preloader extends Scene
         });
     }
 
-    create ()
-    {
+    create () {
         //  When all the assets have loaded, it's often worth creating global objects here that the rest of the game can use.
         //  For example, you can define global animations here, so we can use them in other scenes.
 
         //  Move to the MainMenu. You could also swap this for a Scene Transition, such as a camera fade.
-        this.scene.start('MainMenu');
+        this.scene.start('Game');
     }
 }
