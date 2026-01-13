@@ -1,17 +1,17 @@
 import { Scene } from 'phaser';
-import { createInputControlSystem } from '../game_objects/wyvernInputController';
-import { Controls, createWyvernDriverSystem } from '../game_objects/wyvernDriver';
+import { Controls } from '../game_objects/wyvernDriver';
 import { createWyvern } from '../game_objects/wyvern';
 import { Dungeon } from '../game_objects/dungeon';
 
 import * as ecs from 'bitecs';
 
 import { Health, Killable } from '../systems/components';
-import { checkForKill, kill } from '../systems/killCheck';
-import { animateWyverns } from '../game_objects/animatedWyvern';
-import { addEC, cleanup } from '../../util/initComponent';
+import { createAllSystems } from '../systems/allSystems';
+import { SpriteCreatedCallback } from '../systems/spriteManager';
+import { EntityBuilder } from '../../util/entityBuilder';
 
 export class Game extends Scene {
+
     private world: ecs.World;
     private systemUpdates: ((world: ecs.World, time: number, delta: number) => void)[] = [];
     private camera: Phaser.Cameras.Scene2D.Camera;
@@ -21,7 +21,9 @@ export class Game extends Scene {
     constructor () { super('Game'); }
 
     create () {
-        this.world = ecs.createWorld();
+        const { world, systems } = createAllSystems(this);
+        this.world = world;
+        this.systemUpdates = systems;
         this.camera = this.cameras.main;
         this.camera.setBackgroundColor('#a1a1a1');
 
@@ -30,7 +32,7 @@ export class Game extends Scene {
         this.dungeon = new Dungeon(this, 1024, 0);
 
         const playerAttacksGroup = this.physics.add.group();
-        const playerGroup = this.physics.add.group();
+        //const playerGroup = this.physics.add.group();
 
         this.physics.add.collider(playerAttacksGroup, this.dungeon.monsters, (attackSprite, monsterSprite) => {
             const attackBody = (attackSprite as Phaser.GameObjects.Sprite).body as Phaser.Physics.Arcade.Body;
@@ -54,33 +56,25 @@ export class Game extends Scene {
         //this.dungeon.createSpawner(this, 1024, 0, 6000);
         this.dungeon.createSpawner(this, 1236, 106, 10000, this.dungeon.createPack);
         this.dungeon.createSpawner(this, 1448, 212, 6000);
-
-        this.systemUpdates.push(createInputControlSystem(this.input.keyboard!));
-        this.systemUpdates.push(createWyvernDriverSystem(this.world));
-        this.systemUpdates.push(animateWyverns);
-        this.systemUpdates.push(checkForKill);
-        this.systemUpdates.push(kill);
-        this.systemUpdates.push(cleanup);
         
-        const wyverns = [
-            createWyvern(
-                this.world,
-                playerGroup.create(512, 300, ''),
-                playerAttacksGroup,
-                'medium'
-            )
-        ];
-        wyverns[0].sprite.setDepth(10);
-        addEC(this.world, wyverns[0].eid, Controls, {
-            steer: undefined,
-            dash: false,
-            wingBlast: false,
-            breathe: false,
-        });
+        const wyvernEID = createWyvern(
+            this.world,
+            { x: 512, y: 300, },// group: playerGroup },
+            playerAttacksGroup,
+            'medium'
+        );
 
-        const obj = wyverns[0];
-        obj.sprite.postFX.addGlow(parseInt('#000000'.substring(1), 16), 2, 0.5, false, .1, 4);
-        this.camera.startFollow(obj.sprite);
+        new EntityBuilder(this.world, wyvernEID)
+            .addSoA(Controls, {
+                steer: undefined,
+                dash: false,
+                wingBlast: false,
+                breathe: false,
+            })
+            .createRelated(SpriteCreatedCallback, (sprite: Phaser.GameObjects.Sprite) => { // argument type isn't getting inferred TODO: fix
+                this.camera.startFollow(sprite);
+                sprite.postFX.addGlow(parseInt('#000000'.substring(1), 16), 2, 0.5, false, .1, 4);
+            });
     }
 
     update(time: number, delta: number): void {

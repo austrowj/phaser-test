@@ -1,11 +1,13 @@
 import { Heading, HeadingVectors, xy } from '../world/parameters';
-import { ChangeAnimation, ChangeHeading } from './animatedWyvern';
 
 import * as ecs from 'bitecs';
-import { addSimpleEC } from '../../util/initComponent';
-import { makeWindBlast, makeWindBlastForking } from './skillEffects';
+import { makeWindBlastForking } from './skillEffects';
+import { SpriteOf } from '../systems/spriteManager';
 
-export type WyvernState = 'Idle' | 'Move' | 'Dash' | 'WingBlast' | 'BreathAttack';
+export const WyvernVariant = ['earth', 'air', 'fire', 'water'] as const;
+export type WyvernVariant = typeof WyvernVariant[number];
+
+export type WyvernState = 'Idle' | 'Move' | 'Dash' | 'WingBlast' | 'BreathAttack' | 'Slam';
 
 export const Controls = {
     steer: [] as (Heading | undefined)[],
@@ -14,16 +16,13 @@ export const Controls = {
     breathe: [] as boolean[],
 }
 
-export const WyvernCommand = [] as ('stop' | 'dash' | 'wingblast' | 'breathattack')[];
-
 export const Wyvern = {
+    variant: [] as WyvernVariant[],
     timeRate: [] as number[],
     state: [] as WyvernState[],
     scale: [] as number[],
     topSpeed: [] as number[],
     effectsGroup: [] as Phaser.Physics.Arcade.Group[],
-    sprite: [] as Phaser.GameObjects.Sprite[],
-    body: [] as Phaser.Physics.Arcade.Body[],
     heading: [] as Heading[],
     particles: [] as (Phaser.GameObjects.Particles.ParticleEmitter | null)[],
 }
@@ -31,151 +30,139 @@ export const Wyvern = {
 export const ActiveEffect = [] as number[];
 
 export function createWyvernDriverSystem(world: ecs.World) {
-
-    const steer = (eid: number, h: Heading) => {
+       
+    const steer = (eid: number, h: Heading, body: Phaser.Physics.Arcade.Body) => {
         Wyvern.heading[eid] = h;
-        addSimpleEC(world, eid, ChangeHeading, h);
-        Wyvern.body[eid].setVelocity(...xy(h, Wyvern.topSpeed[eid] / Wyvern.scale[eid]));
+        body.setVelocity(...xy(h, Wyvern.topSpeed[eid] / Wyvern.scale[eid]));
     }
 
+    const stop = (eid: number, body: Phaser.Physics.Arcade.Body) => {
+        Wyvern.state[eid] = 'Idle';
+        body.setVelocity(0, 0);
+        
+        if (ecs.hasComponent(world, eid, ActiveEffect)) {
+            ecs.removeComponent(world, eid, ActiveEffect);
+        }
+    }
+
+    const dash = (eid: number, sprite: Phaser.GameObjects.Sprite, body: Phaser.Physics.Arcade.Body) => {
+        body.setVelocity(0, 0);
+        Wyvern.state[eid] = 'Dash';
+
+        sprite.scene.tweens.add({
+            targets: sprite,
+            // Make wyvern disappear then reappear at high speed.
+            alpha: { from: 1, to: 0 },
+            ease: 'Cubic.inOut',
+            duration: 250,
+            yoyo: true,
+            onYoyo: () => {
+                // On yoyo (halfway point), set high speed.
+                body.setVelocity(...xy(Wyvern.heading[eid], Wyvern.topSpeed[eid] / Wyvern.scale[eid] * 6.0));
+            }
+        });
+        sprite.scene.time.delayedCall(500, () => stop(eid, body) );
+    }
+
+    const wingBlast = (eid: number, sprite: Phaser.GameObjects.Sprite, body: Phaser.Physics.Arcade.Body) => {
+        const timeRate = Wyvern.timeRate[eid];
+        const effectsGroup = Wyvern.effectsGroup[eid];
+        const heading = Wyvern.heading[eid];
+
+        body.setVelocity(0, 0);
+        Wyvern.state[eid] = 'WingBlast';
+        sprite.scene.time.delayedCall(140 / timeRate, () => makeWindBlastForking(world, sprite, heading, effectsGroup, 2) );
+        sprite.scene.time.delayedCall(500 / timeRate, () => stop(eid, body) );
+    }
+
+    const breathAttack = (eid: number, sprite: Phaser.GameObjects.Sprite, body: Phaser.Physics.Arcade.Body) => {
+        const heading = Wyvern.heading[eid];
+        
+        body.setVelocity(0, 0);
+        Wyvern.state[eid] = 'BreathAttack';
+
+        // Compute starting point and angle for the breath attack.
+        const headingVector = HeadingVectors[heading];
+        const breathPoint = {
+            x: sprite.x + headingVector.x * 50 * sprite.scale,
+            y: sprite.y + headingVector.y * 50 * sprite.scale
+        };
+        const base = Phaser.Math.RadToDeg(Math.atan2(headingVector.y, headingVector.x));
+
+        Wyvern.particles[eid] = sprite.scene.add.particles(breathPoint.x, breathPoint.y, 'flares', {
+            frame: 'white',
+            color: [0xfacc22, 0xf89800, 0xf83600, 0x9f0404],
+            colorEase: 'quad.out',
+            lifespan: 1000 * sprite.scale,
+            scale: {
+                start: 0.8 * sprite.scale,
+                end: 0.1 * sprite.scale,
+                ease: 'sine.out'
+            },
+            speed: 600 / (sprite.scale + 1),
+            angle: {min: base - 20, max: base + 20},
+            advance: 200,
+            frequency: 20,
+            blendMode: 'ADD',
+            active: true,
+        });
+        Wyvern.particles[eid].setDepth(11);
+    }
+
+    const handleControls = (eid: number, sprite: Phaser.GameObjects.Sprite, body: Phaser.Physics.Arcade.Body) => {
+        switch (Wyvern.state[eid]) {
+
+            case 'Idle':
+                if (Controls.dash[eid]) { dash(eid, sprite, body); }
+                else if (Controls.wingBlast[eid]) { wingBlast(eid, sprite, body); }
+                else if (Controls.breathe[eid]) { breathAttack(eid, sprite, body); }
+                else if (Controls.steer[eid]) {
+                    Wyvern.state[eid] = 'Move';
+                    steer(eid, Controls.steer[eid], body);
+                }
+                break;
+
+            case 'Move':
+                if (Controls.dash[eid]) { dash(eid, sprite, body); }
+                else if (Controls.wingBlast[eid]) { wingBlast(eid, sprite, body); }
+                else if (Controls.breathe[eid]) { breathAttack(eid, sprite, body); }
+                else if (Controls.steer[eid]) { steer(eid, Controls.steer[eid], body); }
+                else { stop(eid, body); }
+                break;
+            
+            case 'BreathAttack':
+                if (Controls.dash[eid]) {
+                    dash(eid, sprite, body);
+                    
+                    const particles = Wyvern.particles[eid]!;
+                    particles.stop();
+                    // Delay destruction to allow particles to finish.
+                    particles.scene.time.delayedCall(1000, () => {
+                        particles.destroy();
+                    });
+                }
+                else if (!Controls.breathe[eid]) {
+                    stop(eid, body);
+
+                    const particles = Wyvern.particles[eid]!;
+                    particles.stop();
+                    // Delay destruction to allow particles to finish.
+                    particles.scene.time.delayedCall(1000, () => {
+                        particles.destroy();
+                    });
+                }
+                break;
+        }
+    }
+    
     return () => {
-
-        for (const eid of ecs.query(world, [Wyvern, WyvernCommand]) ) {
-
-            const sprite = Wyvern.sprite[eid];
-            const heading = Wyvern.heading[eid];
-            const timeRate = Wyvern.timeRate[eid];
-            const effectsGroup = Wyvern.effectsGroup[eid];
-
-            switch (WyvernCommand[eid]) {
-
-                case 'stop':
-                    Wyvern.state[eid] = 'Idle';
-                    addSimpleEC(world, eid, ChangeAnimation, 'Idle');
-                    Wyvern.body[eid].setVelocity(0, 0);
-                    
-                    if (ecs.hasComponent(world, eid, ActiveEffect)) {
-                        ecs.removeComponent(world, eid, ActiveEffect);
-                    }
-                    break;
-
-                case 'dash':
-                    Wyvern.body[eid].setVelocity(0, 0);
-                    Wyvern.state[eid] = 'Dash';
-                    addSimpleEC(world, eid, ChangeAnimation, 'Dash');
-
-                    sprite.scene.tweens.add({
-                        targets: sprite,
-                        // Make wyvern disappear then reappear at high speed.
-                        alpha: { from: 1, to: 0 },
-                        ease: 'Cubic.inOut',
-                        duration: 250,
-                        yoyo: true,
-                        onYoyo: () => {
-                            // On yoyo (halfway point), set high speed.
-                            Wyvern.body[eid].setVelocity(...xy(Wyvern.heading[eid], Wyvern.topSpeed[eid] / Wyvern.scale[eid] * 6.0));
-                        }
-                    });
-                    sprite.scene.time.delayedCall(500, () => addSimpleEC(world, eid, WyvernCommand, 'stop'));
-                    break;
-
-                case 'wingblast':
-                    Wyvern.body[eid].setVelocity(0, 0);
-                    Wyvern.state[eid] = 'WingBlast';
-                    addSimpleEC(world, eid, ChangeAnimation, 'WingBlast');
-                    sprite.scene.time.delayedCall(140 / timeRate, () => makeWindBlastForking(sprite, heading, effectsGroup) );
-                    sprite.scene.time.delayedCall(500 / timeRate, () => addSimpleEC(world, eid, WyvernCommand, 'stop') );
-                    break;
-                    
-                case 'breathattack':
-                    Wyvern.body[eid].setVelocity(0, 0);
-                    Wyvern.state[eid] = 'BreathAttack';
-                    addSimpleEC(world, eid, ChangeAnimation, 'BreathAttack');
-
-                    //const effectEID = ecs.addComponent(world, eid, ActiveEffect);
-
-                    // Compute starting point and angle for the breath attack.
-                    const headingVector = HeadingVectors[heading];
-                    const breathPoint = {
-                        x: sprite.x + headingVector.x * 50 * sprite.scale,
-                        y: sprite.y + headingVector.y * 50 * sprite.scale
-                    };
-                    const base = Phaser.Math.RadToDeg(Math.atan2(headingVector.y, headingVector.x));
-
-                    Wyvern.particles[eid] = sprite.scene.add.particles(breathPoint.x, breathPoint.y, 'flares', {
-                        frame: 'white',
-                        color: [0xfacc22, 0xf89800, 0xf83600, 0x9f0404],
-                        colorEase: 'quad.out',
-                        lifespan: 1000 * sprite.scale,
-                        scale: {
-                            start: 0.8 * sprite.scale,
-                            end: 0.1 * sprite.scale,
-                            ease: 'sine.out'
-                        },
-                        speed: 600 / (sprite.scale + 1),
-                        angle: {min: base - 20, max: base + 20},
-                        advance: 200,
-                        frequency: 20,
-                        blendMode: 'ADD',
-                        active: true,
-                        //duration: 1000,
-                    });
-                    Wyvern.particles[eid].setDepth(11);
-
-                    break;
-            }
-            ecs.removeComponent(world, eid, WyvernCommand);
-        }
-
-        for (const eid of ecs.query(world, [Wyvern, Controls]) ) {
-            switch (Wyvern.state[eid]) {
-
-                case 'Idle':
-                    if (Controls.dash[eid]) { addSimpleEC(world, eid, WyvernCommand, 'dash'); }
-                    else if (Controls.wingBlast[eid]) { addSimpleEC(world, eid, WyvernCommand, 'wingblast'); }
-                    else if (Controls.breathe[eid]) {
-                        addSimpleEC(world, eid, WyvernCommand, 'breathattack');
-                    }
-                    else if (Controls.steer[eid]) {
-                        Wyvern.state[eid] = 'Move';
-                        addSimpleEC(world, eid, ChangeAnimation, 'Move');
-                        steer(eid, Controls.steer[eid]);
-                    }
-                    break;
-
-                case 'Move':
-                    if (Controls.dash[eid]) { addSimpleEC(world, eid, WyvernCommand, 'dash'); }
-                    else if (Controls.wingBlast[eid]) { addSimpleEC(world, eid, WyvernCommand, 'wingblast'); }
-                    else if (Controls.breathe[eid]) {
-                        addSimpleEC(world, eid, WyvernCommand, 'breathattack');
-                    }
-                    else if (Controls.steer[eid]) { steer(eid, Controls.steer[eid]); }
-                    else { addSimpleEC(world, eid, WyvernCommand, 'stop'); }
-                    break;
-                
-                case 'BreathAttack':
-                    
-                    if (Controls.dash[eid]) {
-                        addSimpleEC(world, eid, WyvernCommand, 'dash');
-                        
-                        const particles = Wyvern.particles[eid]!;
-                        particles.stop();
-                        // Delay destruction to allow particles to finish.
-                        particles.scene.time.delayedCall(1000, () => {
-                            particles.destroy();
-                        });
-                    }
-                    else if (!Controls.breathe[eid]) {
-                        addSimpleEC(world, eid, WyvernCommand, 'stop');
-
-                        const particles = Wyvern.particles[eid]!;
-                        particles.stop();
-                        // Delay destruction to allow particles to finish.
-                        particles.scene.time.delayedCall(1000, () => {
-                            particles.destroy();
-                        });
-                    }
+        for (const eid of ecs.query(world, [Wyvern, Controls])) {
+            for (const spriteEID of ecs.query(world, [SpriteOf(eid)])) {
+                const sprite = SpriteOf(spriteEID)[eid];
+                const body = sprite.body as Phaser.Physics.Arcade.Body;
+                handleControls(eid, sprite, body);
             }
         }
     }
+
 }
