@@ -11,6 +11,8 @@ export const SpriteConfig = [] as {
     depth?: number,
 }[];
 
+export const DestroySprites = {};
+
 export const SpriteOf = ecs.createRelation(
     ecs.withAutoRemoveSubject,
     ecs.makeExclusive,
@@ -48,6 +50,10 @@ export class SpriteManager {
             ecs.addComponent(this.world, spriteEID, SpriteOf(eid));
             SpriteOf(spriteEID)[eid] = sprite as Phaser.Physics.Arcade.Sprite;
 
+            // Tie the entity's fate to the sprite's.
+            // This will also clean up the entity created for the sprite thanks to withAutoRemoveSubject.
+            sprite.on('destroy', () => ecs.removeEntity(this.world, eid));
+
             ecs.addComponent(this.world, eid, HasSprite);
 
             for (const callbackEID of ecs.query(this.world, [SpriteCreatedCallback(eid)])) {
@@ -56,9 +62,6 @@ export class SpriteManager {
                 ecs.removeEntity(this.world, callbackEID);
             }
         }
-    }
-
-    public destroySprites() {
     }
 }
 
