@@ -1,4 +1,6 @@
 import * as ecs from 'bitecs';
+import { WhenCleanedUp } from './cleanupSystem';
+import { EntityBuilder } from '../../util/entityBuilder';
 
 export type SpriteConfig = {[k in keyof typeof SpriteConfig]: typeof SpriteConfig[k]};
 export const SpriteConfig = [] as {
@@ -11,18 +13,18 @@ export const SpriteConfig = [] as {
     depth?: number,
 }[];
 
-export const DestroySprites = {};
-
 export const SpriteOf = ecs.createRelation(
     ecs.withAutoRemoveSubject,
     ecs.makeExclusive,
     ecs.withStore(() => [] as Phaser.Physics.Arcade.Sprite[] )
 );
 
-export const SpriteCreatedCallback = ecs.createRelation(
+export const WhenSpriteCreated = ecs.createRelation(
     ecs.withAutoRemoveSubject,
     ecs.makeExclusive,
-    ecs.withStore(() => [] as ((sprite: Phaser.GameObjects.Sprite) => void)[] )
+    // The callback will be passed the EID of the _parent_ entity. It's the same as the one in the sprite's data property.
+    // DO NOT destroy the sprite yourself, flag the parent entity for cleanup instead.
+    ecs.withStore(() => [] as ((parentEID: number, sprite: Phaser.GameObjects.Sprite) => void)[] )
 );
 
 export class SpriteManager {
@@ -30,7 +32,9 @@ export class SpriteManager {
     constructor(private scene: Phaser.Scene, private world: ecs.World) {}
 
     public createSprites() {
-        for (const eid of ecs.query(this.world, [ecs.Not(HasSprite), SpriteConfig])) {
+        for (const eid of ecs.query(this.world, [ecs.Not(ecs.Wildcard(SpriteOf)), SpriteConfig])) {
+            // Will find anything with a SpriteConfig but no sprite yet.
+            // No need for special tag.
 
             const sprite = this.scene.add.sprite(
                 SpriteConfig[eid].x,
@@ -50,19 +54,18 @@ export class SpriteManager {
             ecs.addComponent(this.world, spriteEID, SpriteOf(eid));
             SpriteOf(spriteEID)[eid] = sprite as Phaser.Physics.Arcade.Sprite;
 
-            // Tie the entity's fate to the sprite's.
-            // This will also clean up the entity created for the sprite thanks to withAutoRemoveSubject.
-            sprite.on('destroy', () => ecs.removeEntity(this.world, eid));
+            // Attach a script to destroy the sprite when the parent entity is cleaned up.
+            // I don't like this way of doing it though, TODO figure out a good way to bake it in.
+            new EntityBuilder(this.world, eid).createRelated(
+                WhenCleanedUp, () => sprite.destroy()
+            );
 
-            ecs.addComponent(this.world, eid, HasSprite);
-
-            for (const callbackEID of ecs.query(this.world, [SpriteCreatedCallback(eid)])) {
-                const callback = SpriteCreatedCallback(callbackEID)[eid];
-                callback(sprite);
+            // Invoke and then remove any on-create scripts.
+            for (const callbackEID of ecs.query(this.world, [WhenSpriteCreated(eid)])) {
+                const callback = WhenSpriteCreated(callbackEID)[eid];
+                callback(eid, sprite);
                 ecs.removeEntity(this.world, callbackEID);
             }
         }
     }
 }
-
-const HasSprite = {};

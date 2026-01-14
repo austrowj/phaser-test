@@ -3,7 +3,7 @@ import { WyvernAnimation } from "./animatedWyvern";
 
 import * as ecs from 'bitecs';
 import { EntityBuilder } from "../../util/entityBuilder";
-import { SpriteConfig, SpriteCreatedCallback } from "../systems/spriteManager";
+import { SpriteConfig, WhenSpriteCreated } from "../systems/spriteManager";
 
 const sizeConfig = {
     'small':  { scale: 0.25, rate: 1.5, topSpeed: 100 },
@@ -40,7 +40,7 @@ export function createWyvern(
             scale: sizeConfig[size].scale,
             depth: 10,
         })
-        .createRelated(SpriteCreatedCallback, (sprite: Phaser.GameObjects.Sprite) => {
+        .createRelated(WhenSpriteCreated, (_: number, sprite: Phaser.GameObjects.Sprite) => {
             // Configure physics body.
             const body = sprite.body as Phaser.Physics.Arcade.Body;
             body.setCircle(20, 108, 100);

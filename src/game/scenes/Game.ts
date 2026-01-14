@@ -5,10 +5,10 @@ import { Dungeon } from '../game_objects/dungeon';
 
 import * as ecs from 'bitecs';
 
-import { Health, Killable } from '../systems/components';
 import { createAllSystems } from '../systems/allSystems';
-import { SpriteCreatedCallback } from '../systems/spriteManager';
+import { WhenSpriteCreated } from '../systems/spriteManager';
 import { EntityBuilder } from '../../util/entityBuilder';
+import { flagForCleanup } from '../systems/cleanupSystem';
 
 export class Game extends Scene {
 
@@ -44,18 +44,10 @@ export class Game extends Scene {
                     new Phaser.Math.Vector2().copy(monsterBody.center).subtract(attackBody.center).normalize().scale(200)
                 )
             }
-            attackSprite.destroy();
-            //console.log((attackSprite as Phaser.GameObjects.Sprite).data.get('originator')); // it just works
+            flagForCleanup(this.world, sprite.data.get('eid'));
         });
 
-        const player = ecs.addEntity(this.world)
-        ecs.addComponents(this.world, player, Health, Killable);
-        Health.current[player] = 10;
-        Health.max[player] = 100;
-        Health.rate[player] = -1;
-        Killable.shouldDie[player] = false;
-
-        //this.dungeon.createSpawner(this, 1024, 0, 6000);
+        this.dungeon.createSpawner(this, 1024, 0, 6000);
         this.dungeon.createSpawner(this, 1236, 106, 10000, this.dungeon.createPack);
         this.dungeon.createSpawner(this, 1448, 212, 6000);
         
@@ -73,7 +65,7 @@ export class Game extends Scene {
                 wingBlast: false,
                 breathe: false,
             })
-            .createRelated(SpriteCreatedCallback, (sprite: Phaser.GameObjects.Sprite) => { // argument type isn't getting inferred TODO: fix
+            .createRelated(WhenSpriteCreated, (_: number, sprite: Phaser.GameObjects.Sprite) => { // argument type isn't getting inferred TODO: fix
                 this.camera.startFollow(sprite);
                 sprite.postFX.addGlow(parseInt('#000000'.substring(1), 16), 2, 0.5, false, .1, 4);
             });

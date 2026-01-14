@@ -1,7 +1,8 @@
 import * as ecs from 'bitecs';
 import { Heading, rotateHeading, xy } from "../world/parameters";
 import { EntityBuilder } from '../../util/entityBuilder';
-import { SpriteConfig, SpriteCreatedCallback } from '../systems/spriteManager';
+import { SpriteConfig, WhenSpriteCreated } from '../systems/spriteManager';
+import { flagForCleanup } from '../systems/cleanupSystem';
 
 export function makeWindBlastForking(
     world: ecs.World,
@@ -18,7 +19,7 @@ export function makeWindBlastForking(
             textureKey: 'flares',
             frame: 'white'
         })
-        .createRelated(SpriteCreatedCallback, (blast: Phaser.GameObjects.Sprite) => {
+        .createRelated(WhenSpriteCreated, (parentEID: number, blast: Phaser.GameObjects.Sprite) => {
 
             effectsGroup.add(blast);
             const body = blast.body as Phaser.Physics.Arcade.Body;
@@ -35,10 +36,6 @@ export function makeWindBlastForking(
                     }
                 });
             }
-
-            blast.scene.time.delayedCall(350 + Phaser.Math.Between(0, 100), () => {
-                blast.destroy();
-            });
-
+            flagForCleanup(world, parentEID, 350 + Phaser.Math.Between(0, 100));
         });
 }
