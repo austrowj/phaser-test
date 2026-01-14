@@ -30,12 +30,13 @@ export function makeWindBlastForking(
             if (cloneLevel > 0) {
                 blast.on('destroy', () => {
                     for (const i of [-3, -2, -1, 0, 1, 2, 3, 4] as const) {
-                        makeWindBlastForking(world, blast, rotateHeading(heading, i), effectsGroup, cloneLevel - 1);
+                        const decrease = Phaser.Math.Between(0, 15) < 15 ? 1 : 0;
+                        makeWindBlastForking(world, blast, rotateHeading(heading, i), effectsGroup, cloneLevel - decrease);
                     }
                 });
             }
 
-            blast.scene.time.delayedCall(400, () => {
+            blast.scene.time.delayedCall(350 + Phaser.Math.Between(0, 100), () => {
                 blast.destroy();
             });
 
