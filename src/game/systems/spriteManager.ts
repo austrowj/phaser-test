@@ -1,5 +1,5 @@
 import * as ecs from 'bitecs';
-import { WhenCleanedUp } from './cleanupSystem';
+import { flagForCleanup, WhenCleanedUp } from './cleanupSystem';
 import { EntityBuilder } from '../../util/entityBuilder';
 
 export type SpriteConfig = {[k in keyof typeof SpriteConfig]: typeof SpriteConfig[k]};
@@ -22,26 +22,42 @@ export const SpriteOf = ecs.createRelation(
 export const WhenSpriteCreated = ecs.createRelation(
     ecs.withAutoRemoveSubject,
     ecs.makeExclusive,
-    // The callback will be passed the EID of the _parent_ entity. It's the same as the one in the sprite's data property.
-    // DO NOT destroy the sprite yourself, flag the parent entity for cleanup instead.
-    ecs.withStore(() => [] as ((parentEID: number, sprite: Phaser.GameObjects.Sprite) => void)[] )
+    ecs.withStore(() => [] as ((spriteEID: number, sprite: Phaser.GameObjects.Sprite) => void)[] )
 );
 
 export class SpriteManager {
 
-    constructor(private scene: Phaser.Scene, private world: ecs.World) {}
+    private spriteGroup: Phaser.GameObjects.Group;
+
+    constructor(private scene: Phaser.Scene, private world: ecs.World) {
+        this.spriteGroup = this.scene.add.group({
+            classType: Phaser.GameObjects.Sprite,
+            runChildUpdate: true,
+            maxSize: 500,
+            active: false,
+            visible: false,
+        });
+    }
 
     public createSprites() {
         for (const eid of ecs.query(this.world, [ecs.Not(ecs.Wildcard(SpriteOf)), SpriteConfig])) {
             // Will find anything with a SpriteConfig but no sprite yet.
             // No need for special tag.
+            console.log('SpriteManager: creating sprite for entity', eid);
 
-            const sprite = this.scene.add.sprite(
+            if (this.spriteGroup.isFull()) {
+                flagForCleanup(this.world, eid);
+                console.warn('SpriteManager: out of sprites, flagging entity for cleanup', eid);
+                continue;
+            }
+
+            const sprite = this.spriteGroup.get(
                 SpriteConfig[eid].x,
-                SpriteConfig[eid].y,
-                SpriteConfig[eid].textureKey,
-                SpriteConfig[eid].frame
-            );
+                SpriteConfig[eid].y
+            ) as Phaser.GameObjects.Sprite;
+            sprite.setTexture(SpriteConfig[eid].textureKey, SpriteConfig[eid].frame); // These two are ignored by spritegroup get.
+            sprite.setVisible(true);
+
             if (SpriteConfig[eid].origin) sprite.setOrigin(...SpriteConfig[eid].origin);
             if (SpriteConfig[eid].scale)  sprite.setScale(SpriteConfig[eid].scale);
             if (SpriteConfig[eid].depth)  sprite.setDepth(SpriteConfig[eid].depth);
@@ -57,13 +73,13 @@ export class SpriteManager {
             // Attach a script to destroy the sprite when the parent entity is cleaned up.
             // I don't like this way of doing it though, TODO figure out a good way to bake it in.
             new EntityBuilder(this.world, eid).createRelated(
-                WhenCleanedUp, () => sprite.destroy()
+                WhenCleanedUp, (_: number) => this.spriteGroup.killAndHide(sprite)
             );
 
             // Invoke and then remove any on-create scripts.
             for (const callbackEID of ecs.query(this.world, [WhenSpriteCreated(eid)])) {
                 const callback = WhenSpriteCreated(callbackEID)[eid];
-                callback(eid, sprite);
+                callback(spriteEID, sprite);
                 ecs.removeEntity(this.world, callbackEID);
             }
         }

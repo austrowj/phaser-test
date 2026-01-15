@@ -45,5 +45,5 @@ export function createWyvern(
             const body = sprite.body as Phaser.Physics.Arcade.Body;
             body.setCircle(20, 108, 100);
         })
-        .builder.eid();
+        .builder;
 }

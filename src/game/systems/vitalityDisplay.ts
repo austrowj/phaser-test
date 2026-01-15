@@ -51,12 +51,19 @@ export class VitalityBarManager {
             );
 
             const healthRatio = Vitality.current[eid] / Vitality.max[eid];
-            graphics.fillStyle(0xFF0000);
+            graphics.fillStyle(0xbd0000);
             graphics.fillRect(
                 bounds.left,
                 bounds.top - barHeight - 2,
                 bounds.width * healthRatio,
                 barHeight
+            );
+            graphics.fillStyle(0xff8484);
+            graphics.fillRect(
+                bounds.left,
+                bounds.top - barHeight - 2,
+                bounds.width * healthRatio,
+                barHeight / 2
             );
         }
     }

@@ -2,7 +2,7 @@ import * as ecs from 'bitecs';
 import { Heading, rotateHeading, xy } from "../world/parameters";
 import { EntityBuilder } from '../../util/entityBuilder';
 import { SpriteConfig, WhenSpriteCreated } from '../systems/spriteManager';
-import { flagForCleanup } from '../systems/cleanupSystem';
+import { flagForCleanup, WhenCleanedUp } from '../systems/cleanupSystem';
 
 export function makeWindBlastForking(
     world: ecs.World,
@@ -19,7 +19,7 @@ export function makeWindBlastForking(
             textureKey: 'flares',
             frame: 'white'
         })
-        .createRelated(WhenSpriteCreated, (parentEID: number, blast: Phaser.GameObjects.Sprite) => {
+        .createRelated(WhenSpriteCreated, (spriteEID: number, blast: Phaser.GameObjects.Sprite) => {
 
             effectsGroup.add(blast);
             const body = blast.body as Phaser.Physics.Arcade.Body;
@@ -31,13 +31,13 @@ export function makeWindBlastForking(
             body.setAcceleration(...xy(heading, -2000));
 
             if (cloneLevel > 0) {
-                blast.on('destroy', () => {
+                new EntityBuilder(world, spriteEID).createRelated(WhenCleanedUp, (_: number) => {
                     for (const i of [-3, -2, -1, 0, 1, 2, 3, 4] as const) {
                         const decrease = Phaser.Math.Between(0, 15) < 15 ? 1 : 0;
                         makeWindBlastForking(world, blast, rotateHeading(heading, i), effectsGroup, cloneLevel - decrease);
                     }
                 });
             }
-            flagForCleanup(world, parentEID, 350 + Phaser.Math.Between(0, 100));
+            flagForCleanup(world, blast.data.get('eid'), 350 + Phaser.Math.Between(0, 100));
         });
 }

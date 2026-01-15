@@ -10,7 +10,7 @@ export function flagForCleanup(world: ecs.World, eid: number, when: number = 0) 
 export const WhenCleanedUp = ecs.createRelation(
     ecs.withAutoRemoveSubject,
     ecs.makeExclusive,
-    ecs.withStore(() => [] as (() => void)[] )
+    ecs.withStore(() => [] as ((eid: number) => void)[] )
 );
 
 export function cleanupEntities(world: ecs.World, _: number, delta: number) {
@@ -22,7 +22,7 @@ export function cleanupEntities(world: ecs.World, _: number, delta: number) {
             // First, call all the callbacks.
             for (const scriptEID of ecs.query(world, [WhenCleanedUp(eid)])) {
                 const script = WhenCleanedUp(scriptEID)[eid];
-                script();
+                script(eid);
                 ecs.removeEntity(world, scriptEID);
             }
 

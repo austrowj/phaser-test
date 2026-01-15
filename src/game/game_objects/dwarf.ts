@@ -29,9 +29,9 @@ export function createDwarf(world: ecs.World, x: number, y: number, physicsGroup
             frame: monsters1.indexOf.Dwarf,
             origin: [0.5, 1],
             scale: 1,
-            depth: 10,
+            depth: 1,
         })
-        .createRelated(WhenSpriteCreated, (parentEID: number, sprite: Phaser.GameObjects.Sprite) => {
+        .createRelated(WhenSpriteCreated, (_: number, sprite: Phaser.GameObjects.Sprite) => {
             if (physicsGroup) {
                 physicsGroup.add(sprite);
                 (sprite.body as Phaser.Physics.Arcade.Body)
@@ -52,10 +52,13 @@ export function createDwarf(world: ecs.World, x: number, y: number, physicsGroup
             });
             sprite.flipX = true;
 
-            flagForCleanup(world, parentEID, 20000);
+            flagForCleanup(world, sprite.data.get('eid'), 20000);
         })
-        .builder.createRelated(WhenCleanedUp, () => {
-            console.log(`Dwarf #${myDwarf} was slain.`);
+        .builder
+        .createRelated(WhenCleanedUp, (eid: number) => {
+            if (ecs.hasComponent(world, eid, Vitality) && Vitality.current[eid] <= 0) {
+                console.log(`Dwarf #${myDwarf} was slain.`);
+            }
         })
-        .builder.eid();
+        .builder;
 }
