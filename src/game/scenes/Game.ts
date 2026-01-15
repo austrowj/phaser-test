@@ -9,6 +9,7 @@ import { createAllSystems } from '../systems/allSystems';
 import { WhenSpriteCreated } from '../systems/spriteManager';
 import { EntityBuilder } from '../../util/entityBuilder';
 import { flagForCleanup } from '../systems/cleanupSystem';
+import { Damaging } from '../systems/damageSystem';
 
 export class Game extends Scene {
 
@@ -29,14 +30,22 @@ export class Game extends Scene {
 
         this.input.setDefaultCursor('url(assets/cursor.gif), pointer');
 
-        this.dungeon = new Dungeon(this, 1024, 0);
+        this.dungeon = new Dungeon(this.world, this, 1024, 0);
 
         const playerAttacksGroup = this.physics.add.group();
         //const playerGroup = this.physics.add.group();
 
         this.physics.add.collider(playerAttacksGroup, this.dungeon.monsters, (attackSprite, monsterSprite) => {
             const sprite = attackSprite as Phaser.GameObjects.Sprite;
-            console.log(`Sprite with EID ${sprite.data.get('eid')} hit an enemy!`);
+            const monster = monsterSprite as Phaser.GameObjects.Sprite;
+
+            if (monster.data) {
+                const targetEID = monster.data.get('eid');
+                if (targetEID) {
+                    new EntityBuilder(this.world, targetEID).createRelated(Damaging, {amount: 1});
+                }
+            }
+
             const attackBody = sprite.body as Phaser.Physics.Arcade.Body;
             const monsterBody = (monsterSprite as Phaser.GameObjects.Sprite).body as Phaser.Physics.Arcade.Body;
             if (monsterBody instanceof Phaser.Physics.Arcade.Body) {

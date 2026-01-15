@@ -3,6 +3,8 @@ import { Step, xy } from "../world/parameters";
 import { createKing } from "./king";
 import { createDwarf } from "./dwarf";
 
+import * as ecs from 'bitecs';
+
 const TILE_WIDTH = 32;
 const TILE_HEIGHT = 16;
 
@@ -17,6 +19,7 @@ export class Dungeon {
     public monsters: Phaser.Physics.Arcade.Group;
 
     constructor(
+        private world: ecs.World,
         scene: Phaser.Scene, x: number, y: number
     ) {
         console.log('Creating dungeon at', x, y);
@@ -128,8 +131,8 @@ export class Dungeon {
 
         bagPositions.forEach((pos) => {
             createBagOfCoins(scene, ...pos, this.monsters);
-            createDwarf(scene, ...xy('NW', 2*Step, pos), this.monsters);
-            createDwarf(scene, ...xy('SE', 2*Step, pos), this.monsters);
+            createDwarf(this.world, ...xy('NW', 2*Step, pos), this.monsters);
+            createDwarf(this.world, ...xy('SE', 2*Step, pos), this.monsters);
         });
     }
 }

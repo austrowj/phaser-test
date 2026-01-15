@@ -10,9 +10,7 @@ export const Vitality = {
 export const Damaging = ecs.createRelation(
     ecs.withAutoRemoveSubject,
     ecs.makeExclusive,
-    ecs.withStore(() => ({
-        amount: [] as number[]
-    }))
+    ecs.withStore(() => [] as {amount: number}[] )
 );
 
 export function updateVitality(world: ecs.World) {
@@ -21,11 +19,14 @@ export function updateVitality(world: ecs.World) {
     for (const eid of ecs.query(world, [Vitality])) {
         for (const damageEID of ecs.query(world, [Damaging(eid)])) {
 
-            Vitality.current[eid] = Math.min(Vitality.max[eid],
-                Math.max(Vitality.min[eid],
-                    Vitality.current[eid] - Damaging(damageEID).amount[eid]
+            Vitality.current[eid] = Math.min(
+                Vitality.max[eid],
+                Math.max(
+                    Vitality.min[eid],
+                    Vitality.current[eid] - Damaging(damageEID)[eid].amount
                 )
             );
+            flagForCleanup(world, damageEID);
 
         }
 

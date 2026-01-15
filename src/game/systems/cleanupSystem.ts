@@ -23,6 +23,7 @@ export function cleanupEntities(world: ecs.World, _: number, delta: number) {
             for (const scriptEID of ecs.query(world, [WhenCleanedUp(eid)])) {
                 const script = WhenCleanedUp(scriptEID)[eid];
                 script();
+                ecs.removeEntity(world, scriptEID);
             }
 
             // Then, remove entity.
