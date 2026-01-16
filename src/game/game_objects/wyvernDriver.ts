@@ -95,8 +95,8 @@ export function createWyvernDriverSystem(world: ecs.World) {
             colorEase: 'quad.out',
             lifespan: 1000 * sprite.scale,
             scale: {
-                start: 0.8 * sprite.scale,
-                end: 0.1 * sprite.scale,
+                start: 0.4 * sprite.scale,
+                end: 1.4 * sprite.scale,
                 ease: 'sine.out'
             },
             speed: 600 / (sprite.scale + 1),
@@ -107,6 +107,19 @@ export function createWyvernDriverSystem(world: ecs.World) {
             active: true,
         });
         Wyvern.particles[eid].setDepth(11);
+
+        // Repeatedly shoot damaging projectiles while breathing.
+        const timer = sprite.scene.time.addEvent({
+            startAt: 100,
+            delay: 100,
+            loop: true,
+            callback: () => {
+                makeWindBlastForking(world, sprite, heading, Wyvern.effectsGroup[eid], 0);
+            }
+        });
+
+        // Store timer in particle data for later retrieval.
+        (Wyvern.particles[eid] as Phaser.GameObjects.Particles.ParticleEmitter).setData('timer', timer);
     }
 
     const handleControls = (eid: number, sprite: Phaser.GameObjects.Sprite, body: Phaser.Physics.Arcade.Body) => {
@@ -140,6 +153,9 @@ export function createWyvernDriverSystem(world: ecs.World) {
                     particles.scene.time.delayedCall(1000, () => {
                         particles.destroy();
                     });
+                    
+                    const timer = particles.getData('timer') as Phaser.Time.TimerEvent;
+                    timer.remove();
                 }
                 else if (!Controls.breathe[eid]) {
                     stop(eid, body);
@@ -150,6 +166,9 @@ export function createWyvernDriverSystem(world: ecs.World) {
                     particles.scene.time.delayedCall(1000, () => {
                         particles.destroy();
                     });
+
+                    const timer = particles.getData('timer') as Phaser.Time.TimerEvent;
+                    timer.remove();
                 }
                 break;
         }

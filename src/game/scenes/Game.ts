@@ -39,11 +39,12 @@ export class Game extends Scene {
         this.physics.add.overlap(playerAttacksGroup, this.dungeon.monsters, (attackSprite, monsterSprite) => {
             const sprite = attackSprite as Phaser.GameObjects.Sprite;
             const monster = monsterSprite as Phaser.GameObjects.Sprite;
-
+            
             if (monster.data) {
-                const targetEID = monster.data.get('eid');
-                if (targetEID) {
-                    new EntityBuilder(this.world, targetEID).createRelated(Damaging, {amount: 1});
+                const targetEID = monster.data.get('eid') as number | undefined;
+                if (targetEID && sprite.data.get('hasHit').indexOf(targetEID) === -1) {
+                    new EntityBuilder(this.world, targetEID).createRelated(Damaging, {amount: 5});
+                    sprite.data.get('hasHit').push(targetEID);
                 }
             }
 
@@ -51,10 +52,10 @@ export class Game extends Scene {
             const monsterBody = (monsterSprite as Phaser.GameObjects.Sprite).body as Phaser.Physics.Arcade.Body;
             if (monsterBody instanceof Phaser.Physics.Arcade.Body) {
                 monsterBody.velocity.add(
-                    new Phaser.Math.Vector2().copy(monsterBody.center).subtract(attackBody.center).normalize().scale(20)
+                    new Phaser.Math.Vector2().copy(monsterBody.center).subtract(attackBody.center).normalize().scale(0)
                 )
             }
-            flagForCleanup(this.world, sprite.data.get('eid'));
+            //flagForCleanup(this.world, sprite.data.get('eid'));
         });
 
         this.dungeon.createSpawner(this, 1024, 0, 6000);

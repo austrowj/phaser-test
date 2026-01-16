@@ -25,10 +25,12 @@ export function makeWindBlastForking(
             const body = blast.body as Phaser.Physics.Arcade.Body;
             blast.setScale(0.5);
             blast.setData('originator', originator);
-            body.setCircle(30, blast.width/2 * blast.scaleX, blast.height/2 * blast.scaleY);
+            body.setCircle(60, blast.width/2 * blast.scaleX, blast.height/2 * blast.scaleY);
 
             body.setVelocity(...xy(heading, 1000));
             body.setAcceleration(...xy(heading, -2000));
+
+            blast.data.set('hasHit', [] as number[]);
 
             if (cloneLevel > 0) {
                 blast.on('destroy', () => {
