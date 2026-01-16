@@ -1,7 +1,8 @@
 import * as ecs from 'bitecs';
 import { Heading, rotateHeading, xy } from "../world/parameters";
 import { EntityBuilder } from '../../util/entityBuilder';
-import { SpriteConfig, SpriteCreatedCallback } from '../systems/spriteManager';
+import { SpriteConfig, WhenSpriteCreated } from '../systems/spriteManager';
+import { flagForCleanup } from '../systems/cleanupSystem';
 
 export function makeWindBlastForking(
     world: ecs.World,
@@ -18,14 +19,16 @@ export function makeWindBlastForking(
             textureKey: 'flares',
             frame: 'white'
         })
-        .createRelated(SpriteCreatedCallback, (blast: Phaser.GameObjects.Sprite) => {
+        .createRelated(WhenSpriteCreated, (blast: Phaser.GameObjects.Sprite) => {
 
             effectsGroup.add(blast);
             const body = blast.body as Phaser.Physics.Arcade.Body;
             blast.setScale(0.5);
             blast.setData('originator', originator);
             body.setCircle(30, blast.width/2 * blast.scaleX, blast.height/2 * blast.scaleY);
-            body.setVelocity(...xy(heading, 800));
+
+            body.setVelocity(...xy(heading, 1000));
+            body.setAcceleration(...xy(heading, -2000));
 
             if (cloneLevel > 0) {
                 blast.on('destroy', () => {
@@ -35,10 +38,6 @@ export function makeWindBlastForking(
                     }
                 });
             }
-
-            blast.scene.time.delayedCall(350 + Phaser.Math.Between(0, 100), () => {
-                blast.destroy();
-            });
-
+            flagForCleanup(world, blast.data.get('eid'), 350 + Phaser.Math.Between(0, 100));
         });
 }

@@ -1,4 +1,6 @@
 import * as ecs from 'bitecs';
+import { flagForCleanup, WhenCleanedUp } from './cleanupSystem';
+import { EntityBuilder } from '../../util/entityBuilder';
 
 export type SpriteConfig = {[k in keyof typeof SpriteConfig]: typeof SpriteConfig[k]};
 export const SpriteConfig = [] as {
@@ -11,15 +13,9 @@ export const SpriteConfig = [] as {
     depth?: number,
 }[];
 
-export const DestroySprites = {};
+export const Sprite = [] as Phaser.Physics.Arcade.Sprite[];
 
-export const SpriteOf = ecs.createRelation(
-    ecs.withAutoRemoveSubject,
-    ecs.makeExclusive,
-    ecs.withStore(() => [] as Phaser.Physics.Arcade.Sprite[] )
-);
-
-export const SpriteCreatedCallback = ecs.createRelation(
+export const WhenSpriteCreated = ecs.createRelation(
     ecs.withAutoRemoveSubject,
     ecs.makeExclusive,
     ecs.withStore(() => [] as ((sprite: Phaser.GameObjects.Sprite) => void)[] )
@@ -27,10 +23,31 @@ export const SpriteCreatedCallback = ecs.createRelation(
 
 export class SpriteManager {
 
-    constructor(private scene: Phaser.Scene, private world: ecs.World) {}
+    private spriteGroup: Phaser.GameObjects.Group;
+
+    constructor(private scene: Phaser.Scene, private world: ecs.World) {
+        this.spriteGroup = this.scene.add.group({
+            classType: Phaser.GameObjects.Sprite,
+            runChildUpdate: true,
+            maxSize: 500,
+            active: false,
+            visible: false,
+        });
+    }
 
     public createSprites() {
-        for (const eid of ecs.query(this.world, [ecs.Not(HasSprite), SpriteConfig])) {
+        for (const eid of ecs.query(this.world, [SpriteConfig, ecs.Not(Sprite)])) {
+            // Will find anything with a SpriteConfig but no sprite yet.
+            // No need for special tag.
+            //console.log('SpriteManager: creating sprite for entity', eid);
+
+            /*
+            if (this.spriteGroup.isFull()) {
+                flagForCleanup(this.world, eid);
+                console.warn('SpriteManager: out of sprites, flagging entity for cleanup', eid);
+                continue;
+            }
+            */
 
             const sprite = this.scene.add.sprite(
                 SpriteConfig[eid].x,
@@ -38,6 +55,7 @@ export class SpriteManager {
                 SpriteConfig[eid].textureKey,
                 SpriteConfig[eid].frame
             );
+
             if (SpriteConfig[eid].origin) sprite.setOrigin(...SpriteConfig[eid].origin);
             if (SpriteConfig[eid].scale)  sprite.setScale(SpriteConfig[eid].scale);
             if (SpriteConfig[eid].depth)  sprite.setDepth(SpriteConfig[eid].depth);
@@ -46,23 +64,21 @@ export class SpriteManager {
             this.scene.physics.add.existing(sprite);
 
             // Create an entity for the sprite.
-            const spriteEID = ecs.addEntity(this.world);
-            ecs.addComponent(this.world, spriteEID, SpriteOf(eid));
-            SpriteOf(spriteEID)[eid] = sprite as Phaser.Physics.Arcade.Sprite;
+            const spriteBuilder = new EntityBuilder(this.world, eid)
+                .addAoS(Sprite, sprite as Phaser.Physics.Arcade.Sprite)
 
-            // Tie the entity's fate to the sprite's.
-            // This will also clean up the entity created for the sprite thanks to withAutoRemoveSubject.
-            sprite.on('destroy', () => ecs.removeEntity(this.world, eid));
+            // Attach a script to destroy the sprite when the parent entity is cleaned up.
+            // I don't like this way of doing it though, TODO figure out a good way to bake it in.
+                .createRelated(
+                    WhenCleanedUp, (_: number) => { sprite.scene.time.delayedCall(0, () => sprite.destroy()); }
+                );
 
-            ecs.addComponent(this.world, eid, HasSprite);
-
-            for (const callbackEID of ecs.query(this.world, [SpriteCreatedCallback(eid)])) {
-                const callback = SpriteCreatedCallback(callbackEID)[eid];
+            // Invoke and then remove any on-create scripts.
+            for (const callbackEID of ecs.query(this.world, [WhenSpriteCreated(eid)])) {
+                const callback = WhenSpriteCreated(callbackEID)[eid];
                 callback(sprite);
                 ecs.removeEntity(this.world, callbackEID);
             }
         }
     }
 }
-
-const HasSprite = {};

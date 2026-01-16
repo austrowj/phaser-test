@@ -5,10 +5,11 @@ import { Dungeon } from '../game_objects/dungeon';
 
 import * as ecs from 'bitecs';
 
-import { Health, Killable } from '../systems/components';
 import { createAllSystems } from '../systems/allSystems';
-import { SpriteCreatedCallback } from '../systems/spriteManager';
+import { WhenSpriteCreated } from '../systems/spriteManager';
 import { EntityBuilder } from '../../util/entityBuilder';
+import { flagForCleanup } from '../systems/cleanupSystem';
+import { Damaging } from '../systems/damageSystem';
 
 export class Game extends Scene {
 
@@ -26,57 +27,58 @@ export class Game extends Scene {
         this.systemUpdates = systems;
         this.camera = this.cameras.main;
         this.camera.setBackgroundColor('#a1a1a1');
+        this.camera.setBounds(-100, -100, 1800, 1500);
 
         this.input.setDefaultCursor('url(assets/cursor.gif), pointer');
 
-        this.dungeon = new Dungeon(this, 1024, 0);
+        this.dungeon = new Dungeon(this.world, this, 1024, 0);
 
         const playerAttacksGroup = this.physics.add.group();
         //const playerGroup = this.physics.add.group();
 
-        this.physics.add.collider(playerAttacksGroup, this.dungeon.monsters, (attackSprite, monsterSprite) => {
+        this.physics.add.overlap(playerAttacksGroup, this.dungeon.monsters, (attackSprite, monsterSprite) => {
             const sprite = attackSprite as Phaser.GameObjects.Sprite;
-            console.log(`Sprite with EID ${sprite.data.get('eid')} hit an enemy!`);
+            const monster = monsterSprite as Phaser.GameObjects.Sprite;
+
+            if (monster.data) {
+                const targetEID = monster.data.get('eid');
+                if (targetEID) {
+                    new EntityBuilder(this.world, targetEID).createRelated(Damaging, {amount: 1});
+                }
+            }
+
             const attackBody = sprite.body as Phaser.Physics.Arcade.Body;
             const monsterBody = (monsterSprite as Phaser.GameObjects.Sprite).body as Phaser.Physics.Arcade.Body;
             if (monsterBody instanceof Phaser.Physics.Arcade.Body) {
                 monsterBody.velocity.add(
-                    new Phaser.Math.Vector2().copy(monsterBody.center).subtract(attackBody.center).normalize().scale(200)
+                    new Phaser.Math.Vector2().copy(monsterBody.center).subtract(attackBody.center).normalize().scale(20)
                 )
             }
-            attackSprite.destroy();
-            //console.log((attackSprite as Phaser.GameObjects.Sprite).data.get('originator')); // it just works
+            flagForCleanup(this.world, sprite.data.get('eid'));
         });
 
-        const player = ecs.addEntity(this.world)
-        ecs.addComponents(this.world, player, Health, Killable);
-        Health.current[player] = 10;
-        Health.max[player] = 100;
-        Health.rate[player] = -1;
-        Killable.shouldDie[player] = false;
-
-        //this.dungeon.createSpawner(this, 1024, 0, 6000);
+        this.dungeon.createSpawner(this, 1024, 0, 6000);
         this.dungeon.createSpawner(this, 1236, 106, 10000, this.dungeon.createPack);
         this.dungeon.createSpawner(this, 1448, 212, 6000);
         
-        const wyvernEID = createWyvern(
+        createWyvern(
             this.world,
             { x: 512, y: 300, },// group: playerGroup },
             playerAttacksGroup,
             'medium'
-        );
-
-        new EntityBuilder(this.world, wyvernEID)
-            .addSoA(Controls, {
-                steer: undefined,
-                dash: false,
-                wingBlast: false,
-                breathe: false,
-            })
-            .createRelated(SpriteCreatedCallback, (sprite: Phaser.GameObjects.Sprite) => { // argument type isn't getting inferred TODO: fix
-                this.camera.startFollow(sprite);
-                sprite.postFX.addGlow(parseInt('#000000'.substring(1), 16), 2, 0.5, false, .1, 4);
-            });
+        )
+        .addSoA(Controls, {
+            steer: undefined,
+            dash: false,
+            wingBlast: false,
+            breathe: false,
+        })
+        .createRelated(WhenSpriteCreated, (sprite: Phaser.GameObjects.Sprite) => { // argument type isn't getting inferred TODO: fix
+            this.camera.startFollow(sprite);
+            sprite.postFX.addGlow(parseInt('#000000'.substring(1), 16), 2, 0.5, false, .1, 4);
+            (sprite.body as Phaser.Physics.Arcade.Body).setBoundsRectangle(new Phaser.Geom.Rectangle(-100, -100, 1800, 1500));
+            (sprite.body as Phaser.Physics.Arcade.Body).setCollideWorldBounds(true);
+        });
     }
 
     update(time: number, delta: number): void {

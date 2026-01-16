@@ -2,7 +2,7 @@
 import { Heading } from '../world/parameters';
 import * as ecs from 'bitecs';
 import { Wyvern, WyvernState, WyvernVariant } from './wyvernDriver';
-import { SpriteOf } from '../systems/spriteManager';
+import { Sprite } from '../systems/spriteManager';
 
 // Designed for external use and/or reference.
 export function load(scene: Phaser.Scene) { loadInternal(scene); }
@@ -14,10 +14,8 @@ export const WyvernAnimation = {
 };
 
 export function syncWyvernAnimation(world: ecs.World) {
-    for (const eid of ecs.query(world, [Wyvern, WyvernAnimation])) {
-        for (const spriteEID of ecs.query(world, [SpriteOf(eid)])) {
-            syncSprite(eid, SpriteOf(spriteEID)[eid]);
-        }
+    for (const eid of ecs.query(world, [Wyvern, WyvernAnimation, Sprite])) {
+        syncSprite(eid, Sprite[eid]);
     }
 }
 

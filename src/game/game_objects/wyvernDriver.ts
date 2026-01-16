@@ -2,7 +2,7 @@ import { Heading, HeadingVectors, xy } from '../world/parameters';
 
 import * as ecs from 'bitecs';
 import { makeWindBlastForking } from './skillEffects';
-import { SpriteOf } from '../systems/spriteManager';
+import { Sprite } from '../systems/spriteManager';
 
 export const WyvernVariant = ['earth', 'air', 'fire', 'water'] as const;
 export type WyvernVariant = typeof WyvernVariant[number];
@@ -156,12 +156,10 @@ export function createWyvernDriverSystem(world: ecs.World) {
     }
     
     return () => {
-        for (const eid of ecs.query(world, [Wyvern, Controls])) {
-            for (const spriteEID of ecs.query(world, [SpriteOf(eid)])) {
-                const sprite = SpriteOf(spriteEID)[eid];
-                const body = sprite.body as Phaser.Physics.Arcade.Body;
-                handleControls(eid, sprite, body);
-            }
+        for (const eid of ecs.query(world, [Wyvern, Controls, Sprite])) {
+            const sprite = Sprite[eid];
+            const body = sprite.body as Phaser.Physics.Arcade.Body;
+            handleControls(eid, sprite, body);
         }
     }
 
