@@ -1,42 +1,24 @@
 import * as ecs from 'bitecs';
 import { Vitality } from './damageSystem';
-import { SpriteOf } from './spriteManager';
+import { Sprite } from './spriteManager';
+import { EntityBuilder } from '../../util/entityBuilder';
 
-const VitalityBarFor = ecs.createRelation(
-    ecs.withAutoRemoveSubject,
-    ecs.makeExclusive,
-    ecs.withStore(() => [] as Phaser.GameObjects.Graphics[] )
-);
+const VitalityBar = [] as Phaser.GameObjects.Graphics[];
 
 export class VitalityBarManager {
     constructor(private world: ecs.World, private scene: Phaser.Scene) {}
 
     public createBars() {
 
-        for (const eid of ecs.query(this.world, [
-            Vitality,
-            ecs.Not(ecs.Wildcard(VitalityBarFor)),
-            ecs.Wildcard(SpriteOf)
-        ])) {
-            const sprite = SpriteOf(ecs.query(this.world, [SpriteOf(eid)])[0])[eid]; // Should be exactly one sprite.
-
-            const graphics = this.createGraphics(sprite);
-
-            // Mark that we've created a vitality bar for this entity.
-            const barEID = ecs.addEntity(this.world);
-            ecs.addComponent(this.world, barEID, VitalityBarFor(eid));
-            VitalityBarFor(barEID)[eid] = graphics as Phaser.GameObjects.Graphics; // Placeholder, not used.
+        for (const eid of ecs.query(this.world, [Vitality, ecs.Not(VitalityBar), Sprite])){
+            new EntityBuilder(this.world, eid).addAoS(VitalityBar, this.createGraphics(Sprite[eid]));
         }
     }
 
     public updateBars() {
-        for (const eid of ecs.query(this.world, [
-            Vitality,
-            ecs.Wildcard(VitalityBarFor),
-            ecs.Wildcard(SpriteOf)
-        ])) {
-            const sprite = SpriteOf(ecs.query(this.world, [SpriteOf(eid)])[0])[eid];
-            const graphics = VitalityBarFor(ecs.query(this.world, [VitalityBarFor(eid)])[0])[eid];
+        for (const eid of ecs.query(this.world, [Vitality, VitalityBar, Sprite])) {
+            const sprite = Sprite[eid];
+            const graphics = VitalityBar[eid];
 
             const bounds = sprite.getBounds();
             const barHeight = 4;

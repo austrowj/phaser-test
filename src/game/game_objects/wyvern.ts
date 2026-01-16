@@ -40,7 +40,7 @@ export function createWyvern(
             scale: sizeConfig[size].scale,
             depth: 10,
         })
-        .createRelated(WhenSpriteCreated, (_: number, sprite: Phaser.GameObjects.Sprite) => {
+        .createRelated(WhenSpriteCreated, (sprite: Phaser.GameObjects.Sprite) => {
             // Configure physics body.
             const body = sprite.body as Phaser.Physics.Arcade.Body;
             body.setCircle(20, 108, 100);

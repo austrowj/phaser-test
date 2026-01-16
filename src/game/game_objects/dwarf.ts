@@ -1,5 +1,5 @@
 import { EntityBuilder } from "../../util/entityBuilder";
-import { monsters1 } from "../data/spritesheetMaps";
+import { monsters1, spellIcons } from "../data/spritesheetMaps";
 import { flagForCleanup, WhenCleanedUp } from "../systems/cleanupSystem";
 import { Vitality } from "../systems/damageSystem";
 import { SpriteConfig, WhenSpriteCreated } from "../systems/spriteManager";
@@ -8,13 +8,7 @@ import { Step, xy } from "../world/parameters";
 
 import * as ecs from 'bitecs';
 
-var dwarfCount = 0;
-
 export function createDwarf(world: ecs.World, x: number, y: number, physicsGroup?: Phaser.Physics.Arcade.Group) {
-
-    dwarfCount += 1;
-
-    const myDwarf = dwarfCount;
 
     return new EntityBuilder(world)
         .addSoA(Vitality, {
@@ -31,7 +25,7 @@ export function createDwarf(world: ecs.World, x: number, y: number, physicsGroup
             scale: 1,
             depth: 1,
         })
-        .createRelated(WhenSpriteCreated, (_: number, sprite: Phaser.GameObjects.Sprite) => {
+        .createRelated(WhenSpriteCreated, (sprite: Phaser.GameObjects.Sprite) => {
             if (physicsGroup) {
                 physicsGroup.add(sprite);
                 (sprite.body as Phaser.Physics.Arcade.Body)
@@ -53,12 +47,32 @@ export function createDwarf(world: ecs.World, x: number, y: number, physicsGroup
             sprite.flipX = true;
 
             flagForCleanup(world, sprite.data.get('eid'), 20000);
-        })
-        .builder
-        .createRelated(WhenCleanedUp, (eid: number) => {
-            if (ecs.hasComponent(world, eid, Vitality) && Vitality.current[eid] <= 0) {
-                console.log(`Dwarf #${myDwarf} was slain.`);
-            }
-        })
-        .builder;
+
+            new EntityBuilder(world, sprite.data.get('eid'))
+                .createRelated(WhenCleanedUp, (eid: number) => {
+                    if (ecs.hasComponent(world, eid, Vitality) && Vitality.current[eid] <= 0) {
+
+                        const count = -5*Math.log((100 - Phaser.Math.Between(0, 99))/100);
+                        //console.log('Dwarf', myDwarf, 'expired, creating', count, 'particles');
+
+                        const particles = sprite.scene.add.particles(sprite.x, sprite.y, 'spellIcons', {
+                            frame: spellIcons.indexOf.Coin,
+                            scaleX: {values: [.5, 0, .5, 0, .5] },
+                            lifespan: {min: 800, max: 1500},
+                            scaleY: 0.5,
+                            speed: {min: 150, max: 450},
+                            angle: {min: 255, max: 285},
+                            bounce: .8,
+                            gravityY: 1200,
+                            bounds: new Phaser.Geom.Rectangle(sprite.x - 400, sprite.y - 200, 800, 220),
+                            advance: 50,
+                            frequency: 10,
+                            stopAfter: count,
+                            blendMode: 'Normal',
+                            active: true,
+                        });
+                        sprite.scene.time.delayedCall(5000, () => particles.destroy() );
+                    }
+                });
+        });
 }

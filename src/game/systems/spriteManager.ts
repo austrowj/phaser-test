@@ -13,16 +13,12 @@ export const SpriteConfig = [] as {
     depth?: number,
 }[];
 
-export const SpriteOf = ecs.createRelation(
-    ecs.withAutoRemoveSubject,
-    ecs.makeExclusive,
-    ecs.withStore(() => [] as Phaser.Physics.Arcade.Sprite[] )
-);
+export const Sprite = [] as Phaser.Physics.Arcade.Sprite[];
 
 export const WhenSpriteCreated = ecs.createRelation(
     ecs.withAutoRemoveSubject,
     ecs.makeExclusive,
-    ecs.withStore(() => [] as ((spriteEID: number, sprite: Phaser.GameObjects.Sprite) => void)[] )
+    ecs.withStore(() => [] as ((sprite: Phaser.GameObjects.Sprite) => void)[] )
 );
 
 export class SpriteManager {
@@ -40,23 +36,25 @@ export class SpriteManager {
     }
 
     public createSprites() {
-        for (const eid of ecs.query(this.world, [ecs.Not(ecs.Wildcard(SpriteOf)), SpriteConfig])) {
+        for (const eid of ecs.query(this.world, [SpriteConfig, ecs.Not(Sprite)])) {
             // Will find anything with a SpriteConfig but no sprite yet.
             // No need for special tag.
-            console.log('SpriteManager: creating sprite for entity', eid);
+            //console.log('SpriteManager: creating sprite for entity', eid);
 
+            /*
             if (this.spriteGroup.isFull()) {
                 flagForCleanup(this.world, eid);
                 console.warn('SpriteManager: out of sprites, flagging entity for cleanup', eid);
                 continue;
             }
+            */
 
-            const sprite = this.spriteGroup.get(
+            const sprite = this.scene.add.sprite(
                 SpriteConfig[eid].x,
-                SpriteConfig[eid].y
-            ) as Phaser.GameObjects.Sprite;
-            sprite.setTexture(SpriteConfig[eid].textureKey, SpriteConfig[eid].frame); // These two are ignored by spritegroup get.
-            sprite.setVisible(true);
+                SpriteConfig[eid].y,
+                SpriteConfig[eid].textureKey,
+                SpriteConfig[eid].frame
+            );
 
             if (SpriteConfig[eid].origin) sprite.setOrigin(...SpriteConfig[eid].origin);
             if (SpriteConfig[eid].scale)  sprite.setScale(SpriteConfig[eid].scale);
@@ -66,20 +64,19 @@ export class SpriteManager {
             this.scene.physics.add.existing(sprite);
 
             // Create an entity for the sprite.
-            const spriteEID = ecs.addEntity(this.world);
-            ecs.addComponent(this.world, spriteEID, SpriteOf(eid));
-            SpriteOf(spriteEID)[eid] = sprite as Phaser.Physics.Arcade.Sprite;
+            const spriteBuilder = new EntityBuilder(this.world, eid)
+                .addAoS(Sprite, sprite as Phaser.Physics.Arcade.Sprite)
 
             // Attach a script to destroy the sprite when the parent entity is cleaned up.
             // I don't like this way of doing it though, TODO figure out a good way to bake it in.
-            new EntityBuilder(this.world, eid).createRelated(
-                WhenCleanedUp, (_: number) => this.spriteGroup.killAndHide(sprite)
-            );
+                .createRelated(
+                    WhenCleanedUp, (_: number) => { sprite.scene.time.delayedCall(0, () => sprite.destroy()); }
+                );
 
             // Invoke and then remove any on-create scripts.
             for (const callbackEID of ecs.query(this.world, [WhenSpriteCreated(eid)])) {
                 const callback = WhenSpriteCreated(callbackEID)[eid];
-                callback(spriteEID, sprite);
+                callback(sprite);
                 ecs.removeEntity(this.world, callbackEID);
             }
         }

@@ -73,7 +73,7 @@ export class Game extends Scene {
             wingBlast: false,
             breathe: false,
         })
-        .createRelated(WhenSpriteCreated, (_: number, sprite: Phaser.GameObjects.Sprite) => { // argument type isn't getting inferred TODO: fix
+        .createRelated(WhenSpriteCreated, (sprite: Phaser.GameObjects.Sprite) => { // argument type isn't getting inferred TODO: fix
             this.camera.startFollow(sprite);
             sprite.postFX.addGlow(parseInt('#000000'.substring(1), 16), 2, 0.5, false, .1, 4);
             (sprite.body as Phaser.Physics.Arcade.Body).setBoundsRectangle(new Phaser.Geom.Rectangle(-100, -100, 1800, 1500));

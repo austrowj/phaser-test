@@ -40,3 +40,11 @@ export const monsters4 = {
         KingArthur: 248,
     }
 } as const;
+
+export const spellIcons = {
+    path: "denzi_iso/img/32x32_spell_icons_Denzi090528-1.PNG",
+    frameDimensions: { frameWidth: 32, frameHeight: 32 },
+    indexOf: {
+        Coin: 49,
+    }
+} as const;
