@@ -1,9 +1,13 @@
-import { createBagOfCoins } from "./bagOfCoins";
 import { Step, xy } from "../world/parameters";
 import { createKing } from "./king";
 import { createDwarf } from "./dwarf";
 
 import * as ecs from 'bitecs';
+import { EntityBuilder } from "../../util/entityBuilder";
+import { SpriteConfig, WhenSpriteCreated } from "../systems/spriteManager";
+import { Loot } from "../systems/lootSystem";
+import { Vitality } from "../systems/damageSystem";
+import { flagForCleanup } from "../systems/cleanupSystem";
 
 const TILE_WIDTH = 32;
 const TILE_HEIGHT = 16;
@@ -45,7 +49,7 @@ export class Dungeon {
         this.monsters = scene.physics.add.group();
     }
 
-    private createMonster(scene: Phaser.Scene, x: number, y: number, config?: {index: number, sheet: string} ) {
+    private createMonster(x: number, y: number, config?: {index: number, sheet: string} ) {
         const monsterIndexes = [
             8,  9, 10, 11, 12, 13, 14, 15,
             16, 17, 18, 19, 20, 21, 22, 23,
@@ -53,26 +57,25 @@ export class Dungeon {
             32, 33, 34, 35, 36, 37,
         ]
 
-        const sprite = config
-            ? this.monsters.create(x, y, config.sheet, config.index)
-            : this.monsters.create(x, y, 'monsters0', Phaser.Utils.Array.GetRandom(monsterIndexes));
-        sprite.setOrigin(0.5);
-        sprite.setScale(1.25);
-        sprite.body.setCircle(16);
-        
-        sprite.body.setVelocity(-50, 25);
-
-        scene.time.delayedCall(18000, () => {
-            scene.tweens.add({
-                targets: sprite,
-                alpha: { from: 1.0, to: 0.0 },
-                duration: 2000,
-                ease: 'Linear'
+        return new EntityBuilder(this.world)
+            .addSoA(Loot, {})
+            .addSoA(Vitality, {current: 100, max: 100, min: 0})
+            .addAoS(SpriteConfig, {
+                x: x,
+                y: y,
+                textureKey: config ? config.sheet : 'monsters0',
+                frame: config ? config.index : Phaser.Utils.Array.GetRandom(monsterIndexes),
+                origin: [0.5, 0.5],
+                scale: 1.25,
+                depth: 1,
+            })
+            .createRelated(WhenSpriteCreated, (sprite: Phaser.GameObjects.Sprite) => {
+                this.monsters.add(sprite);
+                const body = sprite.body as Phaser.Physics.Arcade.Body;
+                body.setCircle(16);
+                body.setVelocity(-50, 25);
+                flagForCleanup(this.world, sprite.data.get('eid'), 20000, false);
             });
-            scene.time.delayedCall(2000, () => { sprite.destroy(); });
-        });
-
-        return sprite;
     }
 
     public createSpawner(scene: Phaser.Scene, x: number, y: number, delay?: number, spawncb?: (scene: Phaser.Scene, x: number, y: number) => void) {
@@ -107,7 +110,7 @@ export class Dungeon {
         sprite.postFX.addGlow(parseInt('#ff7300'.substring(1), 16), 2, 0.5, false, .1, 4);
 
         const myDelay = delay !== undefined ? delay : 3000;
-        const myCb = spawncb !== undefined ? () => spawncb!(scene, x, y) : () => this.createMonster(scene, x, y);
+        const myCb = spawncb !== undefined ? () => spawncb!(scene, x, y) : () => this.createMonster(x, y);
 
         const spawnEvent = scene.time.addEvent({
             delay: myDelay + Phaser.Math.Between(-myDelay/3, myDelay/3),
@@ -120,8 +123,8 @@ export class Dungeon {
         return { sprite, spawnEvent };
     }
 
-    public createPack = (scene: Phaser.Scene, x: number, y: number) => {
-        createKing(scene, x, y, this.monsters);
+    public createPack = (_: Phaser.Scene, x: number, y: number) => {
+        createKing(this.world, x, y, this.monsters);
 
         const bagPositions = [
             xy('NE', 2*Step, [x, y]),
@@ -130,9 +133,9 @@ export class Dungeon {
         ];
 
         bagPositions.forEach((pos) => {
-            createBagOfCoins(scene, ...pos, this.monsters);
-            createDwarf(this.world, ...xy('NW', 2*Step, pos), this.monsters);
-            createDwarf(this.world, ...xy('SE', 2*Step, pos), this.monsters);
+            //createBagOfCoins(scene, ...pos, this.monsters);
+            createDwarf(this.world, ...xy('NW', 1*Step, pos), this.monsters);
+            createDwarf(this.world, ...xy('SE', 1*Step, pos), this.monsters);
         });
     }
 }

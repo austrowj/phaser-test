@@ -30,7 +30,7 @@ export function createWyvern(
             topSpeed: sizeConfig[size].topSpeed,
             effectsGroup: effectsGroup,
             heading: 'S',
-            particles: null,
+            //particles: null,
         })
         .addAoS(SpriteConfig, {
             x: position.x,

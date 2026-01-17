@@ -181,8 +181,9 @@ const animationData = (<T extends Record<WyvernState, AnimationParams>>(data: T)
             repeat: -1,
         },
         framesTemplate: [
+            { frame: 5 }, { frame: 6 }, { frame: 7 },
             { frame: 0 }, { frame: 1 }, { frame: 2 }, { frame: 3 },
-            { frame: 4 }, { frame: 5 }, { frame: 6 }, { frame: 7 },
+            { frame: 4 },
         ]
     },
     Dash: {

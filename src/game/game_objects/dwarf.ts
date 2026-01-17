@@ -1,7 +1,8 @@
 import { EntityBuilder } from "../../util/entityBuilder";
-import { monsters1, spellIcons } from "../data/spritesheetMaps";
-import { flagForCleanup, WhenCleanedUp } from "../systems/cleanupSystem";
+import { monsters1 } from "../data/spritesheetMaps";
+import { flagForCleanup } from "../systems/cleanupSystem";
 import { Vitality } from "../systems/damageSystem";
+import { Loot } from "../systems/lootSystem";
 import { SpriteConfig, WhenSpriteCreated } from "../systems/spriteManager";
 import { Step, xy } from "../world/parameters";
 //import { fadeOutAndDestroy } from "./effects";
@@ -25,6 +26,7 @@ export function createDwarf(world: ecs.World, x: number, y: number, physicsGroup
             scale: 1,
             depth: 1,
         })
+        .addSoA(Loot, {})
         .createRelated(WhenSpriteCreated, (sprite: Phaser.GameObjects.Sprite) => {
             if (physicsGroup) {
                 physicsGroup.add(sprite);
@@ -46,33 +48,6 @@ export function createDwarf(world: ecs.World, x: number, y: number, physicsGroup
             });
             sprite.flipX = true;
 
-            flagForCleanup(world, sprite.data.get('eid'), 20000);
-
-            new EntityBuilder(world, sprite.data.get('eid'))
-                .createRelated(WhenCleanedUp, (eid: number) => {
-                    if (ecs.hasComponent(world, eid, Vitality) && Vitality.current[eid] <= 0) {
-
-                        const count = -5*Math.log((100 - Phaser.Math.Between(0, 99))/100);
-                        //console.log('Dwarf', myDwarf, 'expired, creating', count, 'particles');
-
-                        const particles = sprite.scene.add.particles(sprite.x, sprite.y, 'spellIcons', {
-                            frame: spellIcons.indexOf.Coin,
-                            scaleX: {values: [.5, 0, .5, 0, .5] },
-                            lifespan: {min: 800, max: 1500},
-                            scaleY: 0.5,
-                            speed: {min: 150, max: 450},
-                            angle: {min: 255, max: 285},
-                            bounce: .8,
-                            gravityY: 1200,
-                            bounds: new Phaser.Geom.Rectangle(sprite.x - 400, sprite.y - 200, 800, 220),
-                            advance: 50,
-                            frequency: 10,
-                            stopAfter: count,
-                            blendMode: 'Normal',
-                            active: true,
-                        });
-                        sprite.scene.time.delayedCall(5000, () => particles.destroy() );
-                    }
-                });
+            flagForCleanup(world, sprite.data.get('eid'), 20000, false);
         });
 }

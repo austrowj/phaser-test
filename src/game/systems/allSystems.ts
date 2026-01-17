@@ -6,6 +6,7 @@ import { SpriteManager } from './spriteManager';
 import { updateVitality } from './damageSystem';
 import { cleanupEntities } from './cleanupSystem';
 import { VitalityBarManager } from './vitalityDisplay';
+import { lootSystem } from './lootSystem';
 
 export function createAllSystems(scene: Phaser.Scene) {
     const world = ecs.createWorld();
@@ -23,6 +24,8 @@ export function createAllSystems(scene: Phaser.Scene) {
         updateVitality,
         () => vitalityBarManager.updateBars(),
         
+        lootSystem,
+        () => spriteManager.cleanupSprites(),
         cleanupEntities,
     ]};
 }
