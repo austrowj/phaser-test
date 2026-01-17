@@ -2,6 +2,7 @@ import * as ecs from 'bitecs';
 import { Cleanup } from './cleanupSystem';
 import { Sprite } from './spriteManager';
 import { spellIcons } from '../data/spritesheetMaps';
+import { Player } from '../scenes/Game';
 
 export const Loot = {} as const;
 
@@ -11,6 +12,7 @@ export function lootSystem(world: ecs.World) {
             
             const sprite = Sprite[eid];
             const count = -5*Math.log(Phaser.Math.Between(1, 100)/100);
+            const playerEID = (ecs.query(world, [Sprite, Player]))[0]; // Just assume one exists
 
             const particles = sprite.scene.add.particles(sprite.x, sprite.y, 'spellIcons', {
                 frame: spellIcons.indexOf.Coin,
@@ -26,7 +28,25 @@ export function lootSystem(world: ecs.World) {
                 frequency: 10,
                 stopAfter: count > 0 ? count : 150,
                 blendMode: 'Normal',
-                active: true,
+                active: true, /*
+                moveToX: {
+                    onUpdate: (particle: Phaser.GameObjects.Particles.Particle, key: string, value: any, t: number) => {
+                        const distance = Phaser.Math.Distance.Between(
+                            particle.x, particle.y,
+                            Sprite[playerEID].x, Sprite[playerEID].y
+                        );
+                        return (distance < 1000) ? Sprite[playerEID].x : undefined;
+                    }
+                },
+                moveToY: {
+                    onUpdate: (particle: Phaser.GameObjects.Particles.Particle, key: string, value: any, t: number) => {
+                        const distance = Phaser.Math.Distance.Between(
+                            particle.x, particle.y,
+                            Sprite[playerEID].x, Sprite[playerEID].y
+                        );
+                        return (distance < 1000) ? Sprite[playerEID].y : undefined;
+                    }
+                }, */
             });
             sprite.scene.time.delayedCall(5000, () => particles.destroy() );
         }

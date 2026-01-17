@@ -8,8 +8,9 @@ import * as ecs from 'bitecs';
 import { createAllSystems } from '../systems/allSystems';
 import { WhenSpriteCreated } from '../systems/spriteManager';
 import { EntityBuilder } from '../../util/entityBuilder';
-import { flagForCleanup } from '../systems/cleanupSystem';
 import { Damaging } from '../systems/damageSystem';
+
+export const Player = {} as const;
 
 export class Game extends Scene {
 
@@ -68,6 +69,7 @@ export class Game extends Scene {
             playerAttacksGroup,
             'medium'
         )
+        .addSoA(Player, {})
         .addSoA(Controls, {
             steer: undefined,
             dash: false,
