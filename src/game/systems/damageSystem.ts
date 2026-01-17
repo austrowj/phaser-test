@@ -31,7 +31,7 @@ export function updateVitality(world: ecs.World) {
         }
 
         if (Vitality.current[eid] <= 0) {
-            flagForCleanup(world, eid);
+            flagForCleanup(world, eid, 0, true);
         }
     }
 

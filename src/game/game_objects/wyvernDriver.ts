@@ -1,7 +1,7 @@
 import { Heading, HeadingVectors, xy } from '../world/parameters';
 
 import * as ecs from 'bitecs';
-import { makeWindBlastForking } from './skillEffects';
+import { BreathAttack, EffectOf, makeWindBlastForking } from './skillEffects';
 import { Sprite } from '../systems/spriteManager';
 
 export const WyvernVariant = ['earth', 'air', 'fire', 'water'] as const;
@@ -24,10 +24,7 @@ export const Wyvern = {
     topSpeed: [] as number[],
     effectsGroup: [] as Phaser.Physics.Arcade.Group[],
     heading: [] as Heading[],
-    particles: [] as (Phaser.GameObjects.Particles.ParticleEmitter | null)[],
 }
-
-export const ActiveEffect = [] as number[];
 
 export function createWyvernDriverSystem(world: ecs.World) {
        
@@ -39,10 +36,6 @@ export function createWyvernDriverSystem(world: ecs.World) {
     const stop = (eid: number, body: Phaser.Physics.Arcade.Body) => {
         Wyvern.state[eid] = 'Idle';
         body.setVelocity(0, 0);
-        
-        if (ecs.hasComponent(world, eid, ActiveEffect)) {
-            ecs.removeComponent(world, eid, ActiveEffect);
-        }
     }
 
     const dash = (eid: number, sprite: Phaser.GameObjects.Sprite, body: Phaser.Physics.Arcade.Body) => {
@@ -56,11 +49,8 @@ export function createWyvernDriverSystem(world: ecs.World) {
             ease: 'Cubic.inOut',
             duration: 250,
             yoyo: true,
-            onYoyo: () => {
-                // On yoyo (halfway point), set high speed.
-                body.setVelocity(...xy(Wyvern.heading[eid], Wyvern.topSpeed[eid] / Wyvern.scale[eid] * 6.0));
-            }
         });
+        sprite.scene.time.delayedCall(100, () => body.setVelocity(...xy(Wyvern.heading[eid], Wyvern.topSpeed[eid] / Wyvern.scale[eid] * 6.0)) );
         sprite.scene.time.delayedCall(500, () => stop(eid, body) );
     }
 
@@ -87,39 +77,25 @@ export function createWyvernDriverSystem(world: ecs.World) {
             x: sprite.x + headingVector.x * 50 * sprite.scale,
             y: sprite.y + headingVector.y * 50 * sprite.scale
         };
-        const base = Phaser.Math.RadToDeg(Math.atan2(headingVector.y, headingVector.x));
 
-        Wyvern.particles[eid] = sprite.scene.add.particles(breathPoint.x, breathPoint.y, 'flares', {
-            frame: 'white',
-            color: [0xfacc22, 0xf89800, 0xf83600, 0x9f0404],
-            colorEase: 'quad.out',
-            lifespan: 1000 * sprite.scale,
-            scale: {
-                start: 0.4 * sprite.scale,
-                end: 1.4 * sprite.scale,
-                ease: 'sine.out'
-            },
-            speed: 600 / (sprite.scale + 1),
-            angle: {min: base - 20, max: base + 20},
-            advance: 200,
-            frequency: 20,
-            blendMode: 'ADD',
-            active: true,
-        });
-        Wyvern.particles[eid].setDepth(11);
+        new BreathAttack(world, eid, sprite, Wyvern.effectsGroup[eid], heading, breathPoint.x, breathPoint.y);
+    }
 
-        // Repeatedly shoot damaging projectiles while breathing.
-        const timer = sprite.scene.time.addEvent({
-            startAt: 100,
-            delay: 100,
-            loop: true,
-            callback: () => {
-                makeWindBlastForking(world, sprite, heading, Wyvern.effectsGroup[eid], 0);
+    const stopBreathAttack = (eid: number) => {
+        for (const effectEID of ecs.query(world, [EffectOf(eid)])) {
+            const effect = EffectOf(effectEID)[eid];
+            if (effect.tag === 'breathAttackParticles') {
+                const particles = effect.effects.particles as Phaser.GameObjects.Particles.ParticleEmitter;
+                const timer = effect.effects.timer as Phaser.Time.TimerEvent;
+                particles.stop();
+                // Delay destruction to allow particles to finish.
+                particles.scene.time.delayedCall(1000, () => {
+                    particles.destroy();
+                });
+                timer.remove();
+                ecs.removeEntity(world, effectEID);
             }
-        });
-
-        // Store timer in particle data for later retrieval.
-        (Wyvern.particles[eid] as Phaser.GameObjects.Particles.ParticleEmitter).setData('timer', timer);
+        }
     }
 
     const handleControls = (eid: number, sprite: Phaser.GameObjects.Sprite, body: Phaser.Physics.Arcade.Body) => {
@@ -145,30 +121,13 @@ export function createWyvernDriverSystem(world: ecs.World) {
             
             case 'BreathAttack':
                 if (Controls.dash[eid]) {
+                    stopBreathAttack(eid);
                     dash(eid, sprite, body);
                     
-                    const particles = Wyvern.particles[eid]!;
-                    particles.stop();
-                    // Delay destruction to allow particles to finish.
-                    particles.scene.time.delayedCall(1000, () => {
-                        particles.destroy();
-                    });
-                    
-                    const timer = particles.getData('timer') as Phaser.Time.TimerEvent;
-                    timer.remove();
                 }
                 else if (!Controls.breathe[eid]) {
                     stop(eid, body);
-
-                    const particles = Wyvern.particles[eid]!;
-                    particles.stop();
-                    // Delay destruction to allow particles to finish.
-                    particles.scene.time.delayedCall(1000, () => {
-                        particles.destroy();
-                    });
-
-                    const timer = particles.getData('timer') as Phaser.Time.TimerEvent;
-                    timer.remove();
+                    stopBreathAttack(eid);
                 }
                 break;
         }

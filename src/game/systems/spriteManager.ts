@@ -1,5 +1,5 @@
 import * as ecs from 'bitecs';
-import { WhenCleanedUp } from './cleanupSystem';
+import { Cleanup } from './cleanupSystem';
 import { EntityBuilder } from '../../util/entityBuilder';
 
 export type SpriteConfig = {[k in keyof typeof SpriteConfig]: typeof SpriteConfig[k]};
@@ -41,21 +41,23 @@ export class SpriteManager {
             sprite.setData('eid', eid);
 
             this.scene.physics.add.existing(sprite);
-
-            new EntityBuilder(this.world, eid)
-                .addAoS(Sprite, sprite as Phaser.Physics.Arcade.Sprite)
-
-                // Attach a script to destroy the sprite when the parent entity is cleaned up.
-                // I don't like this way of doing it though, TODO figure out a good way to bake it in.
-                .createRelated(WhenCleanedUp, (_: number) => {
-                    sprite.scene.time.delayedCall(0, () => sprite.destroy()); // Wait one frame to keep the sprite reference valid for other cleanup scripts.
-                });
+            new EntityBuilder(this.world, eid).addAoS(Sprite, sprite as Phaser.Physics.Arcade.Sprite);
 
             // Invoke and then remove any on-create scripts.
             for (const callbackEID of ecs.query(this.world, [WhenSpriteCreated(eid)])) {
                 const callback = WhenSpriteCreated(callbackEID)[eid];
                 callback(sprite);
                 ecs.removeEntity(this.world, callbackEID);
+            }
+        }
+    }
+
+    public cleanupSprites() {
+        for (const eid of ecs.query(this.world, [Sprite, Cleanup])) {
+            if (Cleanup.when[eid] <= 0) {
+                const sprite = Sprite[eid];
+                ecs.removeComponent(this.world, eid, Sprite);
+                sprite.destroy();
             }
         }
     }
