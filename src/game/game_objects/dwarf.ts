@@ -37,7 +37,7 @@ export function createDwarf(world: ecs.World, x: number, y: number, physicsGroup
             }
             
             // Set up wobble tween
-            sprite.scene.tweens.add({
+            const animation = sprite.scene.tweens.add({
                 targets: sprite,
                 angle: { from: -3, to: 3 },
                 yoyo: true,
@@ -46,6 +46,8 @@ export function createDwarf(world: ecs.World, x: number, y: number, physicsGroup
                 delay: Phaser.Math.Between(0, 500),
                 ease: 'Circ.inout'
             });
+            sprite.on('destroy', () => animation.destroy() ); // Have to make sure the tween is cleaned up manually
+
             sprite.flipX = true;
 
             flagForCleanup(world, sprite.data.get('eid'), 20000, false);
